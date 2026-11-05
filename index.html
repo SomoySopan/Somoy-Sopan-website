@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-2PSRZ7LHM4"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J7BYJTWJYT"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
+  gtag('config', 'G-J7BYJTWJYT');
   gtag('config', 'G-2PSRZ7LHM4');
 </script>
 <title>সময় সোপান | স্বপ্ন থেকে সাফল্যে, পাশে আছে সময় সোপান</title>
@@ -355,16 +356,19 @@ const CONFIG = {
   phones:   ["01575817019"],          // অফিসিয়াল ফোন নম্বর
   facebook: "https://www.facebook.com/profile.php?id=61578112490169",
   youtube:  "https://youtube.com/@somoysopan?si=jO5M4u7L0qTY6IQH",
-  email:    "nuac.ags@gmail.com"       // ভর্তির আবেদন এই ইমেইলে আসবে
+  email:    "nuac.ags@gmail.com",      // ভর্তির আবেদন এই ইমেইলে আসবে
+  googleFormLink: "https://docs.google.com/forms/d/e/1FAIpQLScTIvKmMBCAiFZxCzm8YwG1QKso0hsbc2Qim4iTeP7SbRjbsA/viewform?usp=pp_url&entry.2003913796=NAME&entry.1214172656=PHONE&entry.500572022=COURSE&entry.1159213273=BATCH&entry.527456532=NOTE",                  // Google Form-এর "Pre-filled link" (নিচের নির্দেশনা দেখুন) — বসালে আবেদন সরাসরি Google Form-এ জমা হবে
+  applyScript: "",                     // Google Apps Script Web App লিংক (admission-mailer.gs) — বসালে আবেদন আপনার Gmail ও Sheet-এ যাবে
+  noticeSheet: "https://script.google.com/macros/s/AKfycbw9BebGiYSRl4eKGuFQae0FQXj4JQ3v3XPu2jMTjTdBOZXNzgZC_L5XIPQBZrA4AUqFdQ/exec"                      // ← এখানে নোটিশের Web app লিংক বসবে (notice-sheet.gs চালানোর পর পাওয়া /exec লিংক)
 };
 
 const MENTORS = [
   { name: "আসাদুল্লাহ আল গালিব", degree: "বিবিএ, এমবিএ",   subject: "ইংরেজি স্পেশালিস্ট",                         exp: "৯ বছরের অভিজ্ঞতা", photo: PHOTO.galib },
-  { name: "সজীব বিশ্বাস",   degree: "বিএসএস",         subject: "গণিত,অর্থনীতি ও ICT স্পেশালিস্ট",                exp: "৮ বছরের অভিজ্ঞতা", photo: PHOTO.sajib },
+  { name: "সজীব বিশ্বাস",   degree: "বিএসএস",         subject: "গণিত, অর্থনীতি ও ICT স্পেশালিস্ট",                exp: "৮ বছরের অভিজ্ঞতা", photo: PHOTO.sajib },
   { name: "তাশরিফ হাসনাইন তাইন",  degree: "বিবিএ (চলমান)",  subject: "হিসাববিজ্ঞান ও ব্যবসায় শাখা স্পেশালিস্ট",    exp: "৩ বছরের অভিজ্ঞতা", photo: PHOTO.tashrif }
 ];
 
-const SUBJECT_CLASSES = ["ইংরেজি", "গণিত", "অর্থনীতি", "হিসাববিজ্ঞান"];   // বিষয়ভিত্তিক ক্লাসের তালিকা
+const SUBJECT_CLASSES = ["ইংরেজি", "গণিত", "অর্থনীতি", "হিসাববিজ্ঞান", "তথ্য ও যোগাযোগ প্রযুক্তি"];   // বিষয়ভিত্তিক ক্লাসের তালিকা
 const EXAM_YEARS = ["২০২৭", "২০২৮"];                                         // এসএসসি/এইচএসসি ফাইনালের সাল
 
 const PROGRAMS = [
@@ -508,6 +512,17 @@ function fillBatches() {
 fClass.addEventListener("change", fillBatches);
 document.querySelectorAll(".applyBtn").forEach(b => b.addEventListener("click", () => { fClass.value = b.dataset.prog; fillBatches(); }));
 
+// Google Form pre-filled link → ফর্মের জমা দেওয়ার ঠিকানা ও প্রশ্নের entry আইডি বের করে
+function parseFormLink(link) {
+  try {
+    if (!link) return null;
+    const u = new URL(link), map = {};
+    u.searchParams.forEach((val, key) => { if (/^entry\./.test(key)) map[val.trim().toUpperCase()] = key; });
+    if (!map.NAME || !map.PHONE) return null;
+    return { action: u.origin + u.pathname.replace(/\/viewform$/, "/formResponse"), map };
+  } catch (_) { return null; }
+}
+
 // Bangla → English digits so Bangla-typed numbers also validate
 const toEn = s => s.replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d));
 $("#admissionForm").addEventListener("submit", async e => {
@@ -533,16 +548,31 @@ $("#admissionForm").addEventListener("submit", async e => {
   const text = `📝 নতুন ভর্তির আবেদন — সময় সোপান\n\nনাম: ${name}\nমোবাইল: ${phone}\nশ্রেণি/কোর্স: ${course}\nব্যাচ/বিষয়: ${batch}` + (note ? `\nমন্তব্য: ${note}` : "");
   btn.disabled = true; btn.textContent = "জমা হচ্ছে…";
   try {
-    const res = await fetch("https://formsubmit.co/ajax/" + CONFIG.email, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({
-        _subject: "নতুন ভর্তির আবেদন — " + name, _template: "table", _honey: "",
-        "শিক্ষার্থীর নাম": name, "মোবাইল": phone, "শ্রেণি/কোর্স": course, "ব্যাচ/বিষয়": batch, "মন্তব্য": note || "—"
-      })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || String(data.success) === "false") throw new Error("send failed");
+    const gf = parseFormLink(CONFIG.googleFormLink);
+    if (gf) {
+      // আপনার Google Form-এ জমা (Responses ট্যাবে ও লিংক করা Sheet-এ দেখা যাবে)
+      const params = new URLSearchParams();
+      const put = (k, v) => { if (gf.map[k]) params.append(gf.map[k], v); };
+      put("NAME", name); put("PHONE", phone); put("COURSE", course); put("BATCH", batch); put("NOTE", note || "—");
+      await fetch(gf.action, { method: "POST", mode: "no-cors", body: params });
+    } else if (CONFIG.applyScript) {
+      // আপনার নিজের Google Apps Script — আবেদন Sheet-এ জমা হয় ও আপনার Gmail থেকে ইমেইল যায়
+      await fetch(CONFIG.applyScript, {
+        method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ name, phone, course, batch, note })
+      });
+    } else {
+      const res = await fetch("https://formsubmit.co/ajax/" + CONFIG.email, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({
+          _subject: "নতুন ভর্তির আবেদন — " + name, _template: "table", _honey: "",
+          "শিক্ষার্থীর নাম": name, "মোবাইল": phone, "শ্রেণি/কোর্স": course, "ব্যাচ/বিষয়": batch, "মন্তব্য": note || "—"
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || String(data.success) === "false") throw new Error("send failed");
+    }
     ok.classList.remove("hidden");
     form.reset(); fillBatches();
   } catch (_) {
@@ -597,18 +627,55 @@ function renderVideos() {
 renderFilter(); renderVideos();
 
 // Notices
-const colorMap = { red: "bg-red-100 text-red-700", amber: "bg-amber-100 text-amber-700", teal: "bg-brand-100 text-brand-800" };
-$("#noticeGrid").innerHTML = NOTICES.map(n => `
-  <article class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 border-l-4 ${n.color === "red" ? "border-l-red-500" : n.color === "amber" ? "border-l-amber-500" : "border-l-brand-600"}">
+const colorMap  = { red: "bg-red-100 text-red-700", amber: "bg-amber-100 text-amber-700", teal: "bg-brand-100 text-brand-800" };
+const borderMap = { red: "border-l-red-500", amber: "border-l-amber-500", teal: "border-l-brand-600" };
+const COLOR_ALIAS = { red: "red", "লাল": "red", amber: "amber", "হলুদ": "amber", teal: "teal", "নীল": "teal", "সবুজ": "teal" };
+function renderNotices(list) {
+  const box = $("#noticeGrid");
+  if (!list.length) { box.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">এই মুহূর্তে কোনো নতুন নোটিশ নেই।</p>'; return; }
+  box.innerHTML = list.map(n => {
+    const c = COLOR_ALIAS[String(n.color || "").trim().toLowerCase()] || "teal";
+    return `
+  <article class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 border-l-4 ${borderMap[c]}">
     <div class="flex items-center justify-between gap-2 mb-2">
-      <span class="text-xs rounded-full px-3 py-1 font-medium ${colorMap[n.color] || colorMap.teal}">${esc(n.type)}</span>
+      <span class="text-xs rounded-full px-3 py-1 font-medium ${colorMap[c]}">${esc(n.type)}</span>
       <time class="text-xs text-slate-500">${esc(n.date)}</time>
     </div>
     <h3 class="font-semibold leading-snug">${esc(n.title)}</h3>
     <p class="text-sm text-slate-600 mt-1">${esc(n.body)}</p>
-  </article>`).join("");
-
-if (!NOTICES.length) $("#noticeGrid").innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">এই মুহূর্তে কোনো নতুন নোটিশ নেই।</p>';
+  </article>`; }).join("");
+}
+// CSV parser (quotes, commas, new lines)
+function parseCSV(t) {
+  const rows = []; let row = [], cur = "", q = false;
+  t = t.replace(/^﻿/, "");
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ",") { row.push(cur); cur = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && t[i + 1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
+    else cur += ch;
+  }
+  if (cur !== "" || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+if (CONFIG.noticeSheet) {
+  $("#noticeGrid").innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">নোটিশ লোড হচ্ছে…</p>';
+  fetch(CONFIG.noticeSheet, { cache: "no-store" })
+    .then(r => { if (!r.ok) throw new Error("bad"); return r.text(); })
+    .then(t => {
+      // কলাম: ধরন | তারিখ | শিরোনাম | বিবরণ | রং | দেখান?  (প্রথম সারি = শিরোনাম সারি)
+      const list = parseCSV(t).slice(1)
+        .filter(r => (r[2] || "").trim() && !/^(না|no|n|0|false|hide)$/i.test((r[5] || "").trim()))
+        .map(r => ({ type: (r[0] || "").trim() || "নোটিশ", date: (r[1] || "").trim(), title: r[2].trim(), body: (r[3] || "").trim(), color: r[4] }))
+        .reverse().slice(0, 6);   // সবার নিচের (নতুন) সারি সবার আগে দেখাবে
+      renderNotices(list);
+    })
+    .catch(() => renderNotices(NOTICES));
+} else {
+  renderNotices(NOTICES);
+}
 
 /* ---------- Extra sections ---------- */
 const WHY = [
