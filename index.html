@@ -380,8 +380,17 @@ const CONFIG = {
   googleFormLink: "https://docs.google.com/forms/d/e/1FAIpQLScTIvKmMBCAiFZxCzm8YwG1QKso0hsbc2Qim4iTeP7SbRjbsA/viewform?usp=pp_url&entry.2003913796=NAME&entry.1214172656=PHONE&entry.500572022=COURSE&entry.1159213273=BATCH&entry.527456532=NOTE",                  // Google Form-এর "Pre-filled link" (নিচের নির্দেশনা দেখুন) — বসালে আবেদন সরাসরি Google Form-এ জমা হবে
   applyScript: "",                     // Google Apps Script Web App লিংক (admission-mailer.gs) — বসালে আবেদন আপনার Gmail ও Sheet-এ যাবে
   noticeSheet: "",                     // ← এখানে নোটিশের Web app লিংক বসবে (notice-sheet.gs চালানোর পর পাওয়া /exec লিংক)
-  examApi: "https://script.google.com/macros/s/AKfycbzKxhGLfUMsBfShR8wrAu8j01h2_zNlZ6Xe22yCgCJ1PCQKN2-peYhXgjWfS4yYyAzr/exec",                         // ← এখানে পরীক্ষার Web app লিংক বসবে (exam-backend.gs চালানোর পর পাওয়া /exec লিংক); ফাঁকা থাকলে পরীক্ষার অংশ লুকানো থাকবে
-  firebase: null                       // ← সাইন ইন চাইলে Firebase-এর কনফিগ এখানে বসবে, যেমন: { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }; null থাকলে সাইন ইন বোতাম লুকানো থাকবে
+  examApi: "https://script.google.com/macros/s/AKfycbwHJa1TZFAEvwMPSsprSrj5Fi-UiZE14T8XWf-uMAzS1Y3c4D11ghAy7LC8s0w8UzQr/exec",                         // ← এখানে পরীক্ষার Web app লিংক বসবে (exam-backend.gs চালানোর পর পাওয়া /exec লিংক); ফাঁকা থাকলে পরীক্ষার অংশ লুকানো থাকবে
+  firebase: const firebaseConfig = {
+  apiKey: "AIzaSyBLomnbyJxvcOHnnM6vnZ7DRkVAcJKK60c",
+  authDomain: "somoy-sopan-website.firebaseapp.com",
+  projectId: "somoy-sopan-website",
+  storageBucket: "somoy-sopan-website.firebasestorage.app",
+  messagingSenderId: "266843031404",
+  appId: "1:266843031404:web:b6cfa07f2f36baf2101549",
+  measurementId: "G-JMQBJ06D5Q"
+};
+                       // ← সাইন ইন চাইলে Firebase-এর কনফিগ এখানে বসবে, যেমন: { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }; null থাকলে সাইন ইন বোতাম লুকানো থাকবে
 };
 
 const MENTORS = [
