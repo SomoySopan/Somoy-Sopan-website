@@ -77,6 +77,7 @@
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#programs">কোর্সসমূহ</a>
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#classes">অনলাইন ক্লাস</a>
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#notices">নোটিশ বোর্ড</a>
+      <a class="examNav hidden px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#exams">পরীক্ষা</a>
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#contact">যোগাযোগ</a>
       <a href="#admission" class="ml-2 px-4 py-2 rounded-lg bg-gold-500 text-white hover:bg-gold-400">ভর্তি</a>
     </nav>
@@ -93,6 +94,7 @@
       <a class="mnav px-3 py-3 rounded-lg hover:bg-brand-50" href="#classes">অনলাইন ক্লাস</a>
       <a class="mnav px-3 py-3 rounded-lg hover:bg-brand-50" href="#admission">ভর্তি</a>
       <a class="mnav px-3 py-3 rounded-lg hover:bg-brand-50" href="#notices">নোটিশ বোর্ড</a>
+      <a class="mnav examNav hidden px-3 py-3 rounded-lg hover:bg-brand-50" href="#exams">পরীক্ষা</a>
       <a class="mnav px-3 py-3 rounded-lg hover:bg-brand-50" href="#contact">যোগাযোগ</a>
     </div>
   </div>
@@ -251,6 +253,21 @@
   <p class="text-center text-sm text-slate-500 mt-6">নতুন নোটিশ ও আপডেটের জন্য আমাদের <a id="fbNotice" href="#" target="_blank" rel="noopener" class="text-brand-700 font-medium underline">Facebook পেজ</a> অনুসরণ করুন।</p>
 </section>
 
+<!-- ============ EXAMS: অনলাইন পরীক্ষা / MCQ প্রতিযোগিতা (CONFIG.examApi ফাঁকা থাকলে লুকানো থাকবে) ============ -->
+<section id="exams" class="hidden bg-white py-14">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="text-center mb-8">
+      <h2 class="text-3xl font-bold text-brand-800">অনলাইন পরীক্ষা ও প্রতিযোগিতা</h2>
+      <div class="w-16 h-1 bg-gold-500 rounded mx-auto mt-3"></div>
+      <p class="text-slate-500 mt-3">মডেল টেস্ট দিন, নিজের অবস্থান জানুন — সবার জন্য উন্মুক্ত। নাম, মোবাইল ও শ্রেণি দিলেই অংশ নেওয়া যাবে।</p>
+    </div>
+    <div id="examGrid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  </div>
+</section>
+<div id="examModal" class="hidden fixed inset-0 z-[80] bg-slate-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="অনলাইন পরীক্ষা">
+  <div id="examBody" class="max-w-2xl mx-auto px-4 py-5 min-h-full"></div>
+</div>
+
 <!-- ============ TESTIMONIALS (TESTIMONIALS তালিকা ফাঁকা থাকলে লুকানো থাকবে) ============ -->
 <section id="testimonials" class="hidden bg-brand-50 py-14">
   <div class="max-w-6xl mx-auto px-4">
@@ -359,7 +376,8 @@ const CONFIG = {
   email:    "nuac.ags@gmail.com",      // ভর্তির আবেদন এই ইমেইলে আসবে
   googleFormLink: "https://docs.google.com/forms/d/e/1FAIpQLScTIvKmMBCAiFZxCzm8YwG1QKso0hsbc2Qim4iTeP7SbRjbsA/viewform?usp=pp_url&entry.2003913796=NAME&entry.1214172656=PHONE&entry.500572022=COURSE&entry.1159213273=BATCH&entry.527456532=NOTE",                  // Google Form-এর "Pre-filled link" (নিচের নির্দেশনা দেখুন) — বসালে আবেদন সরাসরি Google Form-এ জমা হবে
   applyScript: "",                     // Google Apps Script Web App লিংক (admission-mailer.gs) — বসালে আবেদন আপনার Gmail ও Sheet-এ যাবে
-  noticeSheet: "https://script.google.com/macros/s/AKfycbw9BebGiYSRl4eKGuFQae0FQXj4JQ3v3XPu2jMTjTdBOZXNzgZC_L5XIPQBZrA4AUqFdQ/exec"                      // ← এখানে নোটিশের Web app লিংক বসবে (notice-sheet.gs চালানোর পর পাওয়া /exec লিংক)
+  noticeSheet: "",                     // ← এখানে নোটিশের Web app লিংক বসবে (notice-sheet.gs চালানোর পর পাওয়া /exec লিংক)
+  examApi: "https://script.google.com/macros/s/AKfycbzu5fZD2XsV9eDqJ2nrlK1gR1w0OysZLYO_y8pAfqGbg0MQvW8Yp-5JQrUYYXih2Iv01w/exec"                          // ← এখানে পরীক্ষার Web app লিংক বসবে (exam-backend.gs চালানোর পর পাওয়া /exec লিংক); ফাঁকা থাকলে পরীক্ষার অংশ লুকানো থাকবে
 };
 
 const MENTORS = [
@@ -676,6 +694,327 @@ if (CONFIG.noticeSheet) {
 } else {
   renderNotices(NOTICES);
 }
+
+/* ---------- অনলাইন পরীক্ষা / MCQ প্রতিযোগিতা ---------- */
+// পরীক্ষা ও প্রশ্ন Google Sheet থেকে আসে (exam-backend.gs)। CONFIG.examApi ফাঁকা থাকলে এই অংশ লুকানো থাকবে।
+const EXAM_CLASSES = ["নবম শ্রেণি", "দশম শ্রেণি", "একাদশ শ্রেণি", "দ্বাদশ শ্রেণি", "এসএসসি পরীক্ষার্থী", "এইচএসসি পরীক্ষার্থী", "NU ভর্তি প্রস্তুতি", "অন্যান্য"];
+const EXAM_LETTERS = ["ক", "খ", "গ", "ঘ"];
+const ex = { exams: [], offset: 0, run: null, tick: null };
+
+const bnD = s => String(s).replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[d]);
+const fmtMS = s => { s = Math.max(0, Math.round(s)); return bnD(String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0")); };
+const fmtDT = ms => { try { const o = { timeZone: "Asia/Dhaka" }; return new Intl.DateTimeFormat("bn-BD", Object.assign({ day: "numeric", month: "long" }, o)).format(ms) + ", " + new Intl.DateTimeFormat("bn-BD", Object.assign({ hour: "numeric", minute: "2-digit", hour12: true }, o)).format(ms); } catch (e) { return new Date(ms).toLocaleString(); } };
+const exNow = () => Date.now() + ex.offset;
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+function exApi(params) {
+  const u = new URL(CONFIG.examApi);
+  Object.keys(params).forEach(k => u.searchParams.set(k, params[k]));
+  u.searchParams.set("_", Date.now());
+  return fetch(u.toString(), { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("net"); return r.json(); });
+}
+const NET_MSG = "ইন্টারনেট সংযোগে সমস্যা হচ্ছে। সংযোগ দেখে আবার চেষ্টা করুন।";
+
+// টোকেন থেকে নির্দিষ্ট (প্রতি শিক্ষার্থীর জন্য আলাদা) এলোমেলো ক্রম
+function seeded(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return function () {
+    h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  };
+}
+function shuffled(arr, rnd) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+/* ----- তালিকা ----- */
+function exStatus(e) { const n = exNow(); return n < e.start ? "upcoming" : (n <= e.end ? "live" : "ended"); }
+function exLoad() {
+  const grid = $("#examGrid");
+  $("#exams").classList.remove("hidden");
+  document.querySelectorAll(".examNav").forEach(a => a.classList.remove("hidden"));
+  grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">পরীক্ষার তালিকা লোড হচ্ছে…</p>';
+  exApi({ action: "list" }).then(d => {
+    if (!d.ok) throw new Error("bad");
+    ex.offset = d.now - Date.now();
+    ex.exams = d.exams;
+    exRender();
+  }).catch(() => {
+    grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">এই মুহূর্তে পরীক্ষার তালিকা আনা যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।</p>';
+  });
+}
+function exRender() {
+  const grid = $("#examGrid");
+  if (!ex.exams.length) { grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">এখন কোনো পরীক্ষা নেই — শীঘ্রই নতুন পরীক্ষা আসছে। নোটিশ বোর্ডে নজর রাখুন।</p>'; return; }
+  const order = { live: 0, upcoming: 1, ended: 2 };
+  const list = ex.exams.slice().sort((a, b) => {
+    const sa = exStatus(a), sb = exStatus(b);
+    return order[sa] - order[sb] || (sa === "ended" ? b.end - a.end : a.start - b.start);
+  });
+  const badge = { live: ["চলমান", "bg-emerald-100 text-emerald-800"], upcoming: ["শীঘ্রই", "bg-amber-100 text-amber-800"], ended: ["শেষ হয়েছে", "bg-slate-100 text-slate-600"] };
+  grid.innerHTML = list.map(e => {
+    const st = exStatus(e), b = badge[st];
+    const canReview = exNow() >= e.reviewAt;
+    return `<article class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <span class="text-xs rounded-full px-3 py-1 font-medium ${b[1]}">${b[0]}</span>
+        ${e.cls ? `<span class="text-xs text-slate-500">${esc(e.cls)}</span>` : ""}
+      </div>
+      <h3 class="font-semibold text-lg text-brand-800 leading-snug">${esc(e.title)}</h3>
+      <ul class="text-sm text-slate-600 mt-3 space-y-1">
+        <li>📝 ${bnD(e.count)}টি প্রশ্ন &nbsp;•&nbsp; ⏱ ${bnD(e.dur)} মিনিট</li>
+        <li>🗓 ${esc(fmtDT(e.start))} — ${esc(fmtDT(e.end))}</li>
+      </ul>
+      <div class="mt-auto pt-4 grid gap-2">
+        ${st === "live" ? `<button type="button" data-act="start" data-id="${esc(e.id)}" class="w-full py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold">পরীক্ষা দিন</button>` : ""}
+        ${st === "upcoming" ? `<div class="w-full py-3 rounded-xl bg-slate-100 text-slate-500 text-center font-medium">${esc(fmtDT(e.start))} থেকে শুরু</div>` : ""}
+        <div class="grid grid-cols-${st === "ended" && canReview ? 2 : 1} gap-2">
+          ${st !== "upcoming" ? `<button type="button" data-act="board" data-id="${esc(e.id)}" class="py-2.5 rounded-xl border-2 border-brand-700 text-brand-700 hover:bg-brand-50 font-semibold text-sm">🏆 র‍্যাংকিং</button>` : ""}
+          ${st === "ended" && canReview ? `<button type="button" data-act="review" data-id="${esc(e.id)}" class="py-2.5 rounded-xl border-2 border-gold-500 text-amber-700 hover:bg-amber-50 font-semibold text-sm">✅ সঠিক উত্তর</button>` : ""}
+        </div>
+      </div>
+    </article>`;
+  }).join("");
+}
+$("#examGrid").addEventListener("click", ev => {
+  const b = ev.target.closest("button[data-act]"); if (!b) return;
+  const e = ex.exams.find(x => x.id === b.dataset.id); if (!e) return;
+  if (b.dataset.act === "start") exEntry(e);
+  else if (b.dataset.act === "board") exBoard(e);
+  else exReview(e);
+});
+
+/* ----- মডাল ----- */
+function exOpen(html) {
+  const m = $("#examModal");
+  $("#examBody").innerHTML = html;
+  if (m.classList.contains("hidden")) { m.classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+  m.scrollTop = 0;
+}
+function exClose(force) {
+  if (ex.run && !ex.run.done && !force && !confirm("পরীক্ষা চলছে! এখন বের হলেও টাইমার চলতে থাকবে। একই মোবাইল নম্বর দিয়ে সময় থাকতে আবার ঢুকে চালিয়ে যেতে পারবেন। বের হবেন?")) return;
+  clearInterval(ex.tick); ex.run = null;
+  $("#examModal").classList.add("hidden");
+  document.body.style.overflow = "";
+  exLoad();
+}
+const exTop = (title, back) => `<div class="flex items-center justify-between gap-3 mb-4">
+  <h2 class="font-bold text-brand-800 text-lg leading-snug">${esc(title)}</h2>
+  <button type="button" id="exX" class="shrink-0 px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-sm">${back || "✕ বন্ধ"}</button></div>`;
+const exInput = "w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white";
+document.addEventListener("click", ev => { if (ev.target.closest("#exX")) exClose(); });
+window.addEventListener("beforeunload", e => { if (ex.run && !ex.run.done) { e.preventDefault(); e.returnValue = ""; } });
+
+/* ----- প্রবেশ ফরম ----- */
+function exEntry(e, msg) {
+  const saved = lsGet("ss_ex_" + e.id) || {};
+  exOpen(`${exTop(e.title)}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <ul class="text-sm text-slate-600 space-y-1 mb-4">
+        <li>📝 ${bnD(e.count)}টি প্রশ্ন &nbsp;•&nbsp; ⏱ ${bnD(e.dur)} মিনিট</li>
+        <li>⚠ "পরীক্ষা শুরু করুন" চাপলেই টাইমার চালু হবে; সময় শেষ হলে উত্তর নিজে থেকেই জমা হবে।</li>
+        <li>একই মোবাইল নম্বর দিয়ে একবারই অংশ নেওয়া যাবে।</li>
+        <li>ভুল উত্তরে নম্বর কাটা যাবে না।</li>
+        ${e.info ? `<li class="text-slate-700">${esc(e.info)}</li>` : ""}
+      </ul>
+      <form id="exForm" class="grid gap-4" novalidate>
+        <div><label class="block text-sm font-medium mb-1" for="exName">নাম *</label>
+          <input id="exName" type="text" maxlength="60" placeholder="আপনার নাম" value="${esc(saved.name || "")}" class="${exInput}"></div>
+        <div><label class="block text-sm font-medium mb-1" for="exPhone">মোবাইল নম্বর *</label>
+          <input id="exPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="01XXXXXXXXX" value="${esc(saved.phone || "")}" class="${exInput}"></div>
+        <div><label class="block text-sm font-medium mb-1" for="exCls">শ্রেণি *</label>
+          <select id="exCls" class="${exInput}"><option value="">-- শ্রেণি নির্বাচন করুন --</option>${EXAM_CLASSES.map(c => `<option ${saved.cls === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+        <p id="exErr" class="${msg ? "" : "hidden "}text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">${esc(msg || "")}</p>
+        <button id="exGo" type="submit" class="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold text-lg">পরীক্ষা শুরু করুন</button>
+        <p class="text-xs text-slate-500">র‍্যাংকিং তালিকায় শুধু নামের প্রথম অংশ, শ্রেণি ও নম্বর দেখানো হয়; মোবাইল নম্বর কাউকে দেখানো হয় না।</p>
+      </form></div>`);
+  $("#exForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const name = $("#exName").value.trim(), phone = $("#exPhone").value.trim(), cls = $("#exCls").value;
+    const err = t => { const p = $("#exErr"); p.textContent = t; p.classList.remove("hidden"); };
+    if (name.length < 2) return err("আপনার নাম লিখুন।");
+    if (!/^(\+?88)?01[3-9][\d০-৯]{8}$/.test(phone.replace(/[\s-]/g, "").replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d)))) return err("সঠিক মোবাইল নম্বর দিন (যেমন 01XXXXXXXXX)।");
+    if (!cls) return err("শ্রেণি বেছে নিন।");
+    const btn = $("#exGo"); btn.disabled = true; btn.textContent = "অপেক্ষা করুন…";
+    try {
+      const d = await exApi({ action: "start", exam: e.id, name, phone, cls });
+      if (!d.ok) {
+        btn.disabled = false; btn.textContent = "পরীক্ষা শুরু করুন"; err(d.error || "শুরু করা যায়নি।");
+        if (d.code === "done") $("#exErr").insertAdjacentHTML("afterend", `<button type="button" id="exSeeBoard" class="py-2.5 rounded-xl border-2 border-brand-700 text-brand-700 font-semibold">🏆 র‍্যাংকিং দেখুন</button>`), $("#exSeeBoard").addEventListener("click", () => exBoard(e));
+        return;
+      }
+      lsSet("ss_ex_" + e.id, Object.assign(saved, { name, phone, cls }));
+      exBegin(e, d);
+    } catch (x) { btn.disabled = false; btn.textContent = "পরীক্ষা শুরু করুন"; err(NET_MSG); }
+  });
+}
+
+/* ----- পরীক্ষা চলছে ----- */
+$("#examBody").addEventListener("click", ev => {
+  const b = ev.target.closest(".exopt");
+  if (b && ex.run && !ex.run.submitting && !ex.run.done) {
+    const qi = b.dataset.q, k = +b.dataset.k;
+    if (ex.run.ans[qi] === k) delete ex.run.ans[qi]; else ex.run.ans[qi] = k;
+    const saved = lsGet("ss_ex_" + ex.run.e.id) || {}; saved.token = ex.run.token; saved.ans = ex.run.ans; lsSet("ss_ex_" + ex.run.e.id, saved);
+    exMark();
+  }
+  if (ev.target.closest("#exSubmit")) exSubmit(false);
+});
+function exBegin(e, d) {
+  const rnd = seeded(d.token);
+  let items = d.questions.map((q, i) => Object.assign({ i }, q));
+  if (d.exam.shuffleQ) items = shuffled(items, rnd);
+  if (d.exam.shuffleO) items.forEach(q => { q.opts = shuffled(q.opts, rnd); });
+  const saved = lsGet("ss_ex_" + e.id) || {};
+  const ans = (saved.token === d.token && saved.ans) ? saved.ans : {};
+  ex.run = { e, token: d.token, items, n: items.length, ans, deadline: Date.now() + d.remaining * 1000, done: false, submitting: false };
+  lsSet("ss_ex_" + e.id, Object.assign(saved, { token: d.token, ans }));
+  exPaper();
+}
+function exPaper() {
+  const r = ex.run;
+  const qHtml = r.items.map((q, pos) => `<section class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4" data-qi="${q.i}">
+      <p class="font-medium leading-relaxed" style="white-space:pre-line">${bnD(pos + 1)}. ${esc(q.q)}</p>
+      ${q.img ? `<img src="${esc(q.img)}" alt="প্রশ্নের ছবি" loading="lazy" referrerpolicy="no-referrer" class="rounded-lg max-h-64 mx-auto my-3" onerror="this.style.display='none'">` : ""}
+      <div class="grid gap-2 mt-3">${q.opts.map((o, j) => `<button type="button" role="radio" aria-checked="false" data-q="${q.i}" data-k="${o.k}" class="exopt text-left flex gap-3 items-start rounded-xl border px-3 py-3 border-slate-300 bg-white active:bg-brand-50">
+        <span class="shrink-0 w-7 h-7 rounded-full border border-slate-300 grid place-items-center text-sm font-semibold">${EXAM_LETTERS[j]}</span><span class="pt-0.5">${esc(o.t)}</span></button>`).join("")}</div>
+    </section>`).join("");
+  exOpen(`<div class="sticky top-0 z-10 -mx-4 px-4 py-3 bg-slate-50/95 backdrop-blur border-b border-slate-200 mb-4">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0"><div class="font-bold text-brand-800 truncate">${esc(r.e.title)}</div><div class="text-xs text-slate-500">উত্তর দেওয়া হয়েছে: <span id="exCnt"></span>/${bnD(r.n)}</div></div>
+        <div id="exTimer" class="shrink-0 px-3 py-1.5 rounded-lg bg-brand-800 text-white font-bold tabular-nums text-lg">--:--</div>
+      </div></div>
+    ${qHtml}
+    <button type="button" id="exSubmit" class="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-gold-400 text-white font-semibold text-lg mb-3">উত্তর জমা দিন</button>
+    <p class="text-xs text-slate-500 text-center mb-8">সময় শেষ হলে উত্তর নিজে থেকেই জমা হয়ে যাবে।</p>`);
+  exMark();
+  clearInterval(ex.tick);
+  const t = () => {
+    const rem = Math.ceil((r.deadline - Date.now()) / 1000);
+    const el = $("#exTimer"); if (!el) return;
+    el.textContent = fmtMS(rem);
+    el.classList.toggle("bg-red-600", rem <= 60);
+    el.classList.toggle("bg-brand-800", rem > 60);
+    if (rem <= 0) { clearInterval(ex.tick); exSubmit(true); }
+  };
+  t(); ex.tick = setInterval(t, 250);
+}
+function exMark() {
+  const r = ex.run; if (!r) return;
+  document.querySelectorAll(".exopt").forEach(b => {
+    const on = r.ans[b.dataset.q] === +b.dataset.k;
+    b.setAttribute("aria-checked", on);
+    b.classList.toggle("border-brand-600", on); b.classList.toggle("bg-brand-50", on); b.classList.toggle("ring-2", on); b.classList.toggle("ring-brand-500", on);
+    b.classList.toggle("border-slate-300", !on); b.classList.toggle("bg-white", !on);
+  });
+  const c = $("#exCnt"); if (c) c.textContent = bnD(Object.keys(r.ans).length);
+}
+async function exSubmit(auto) {
+  const r = ex.run; if (!r || r.submitting || r.done) return;
+  const blanks = r.n - Object.keys(r.ans).length;
+  if (!auto && !confirm((blanks ? `${bnD(blanks)}টি প্রশ্নের উত্তর দেননি। ` : "") + "উত্তর জমা দিলে আর বদলানো যাবে না। জমা দেবেন?")) return;
+  r.submitting = true; clearInterval(ex.tick);
+  exOpen(`<div class="text-center py-24"><div class="text-4xl mb-3">⏳</div><p class="font-semibold text-brand-800">${auto ? "সময় শেষ! " : ""}উত্তর জমা হচ্ছে…</p><p class="text-sm text-slate-500 mt-1">পেজটি বন্ধ করবেন না।</p></div>`);
+  const arr = []; for (let i = 0; i < r.n; i++) arr.push(r.ans[i] === undefined ? "" : r.ans[i]);
+  let d = null, lastErr = NET_MSG;
+  for (let t = 0; t < 8 && !d; t++) {
+    try {
+      const x = await exApi({ action: "submit", token: r.token, ans: arr.join(",") });
+      if (x.ok) d = x; else { lastErr = x.error || "জমা নেওয়া যায়নি।"; break; }
+    } catch (e) { lastErr = NET_MSG; await new Promise(s => setTimeout(s, 3000)); }
+  }
+  if (!d) {
+    r.submitting = false;
+    exOpen(`<div class="text-center py-20"><div class="text-4xl mb-3">⚠</div><p class="font-semibold text-red-700">${esc(lastErr)}</p>
+      <button type="button" id="exRetry" class="mt-5 px-6 py-3 rounded-xl bg-brand-700 text-white font-semibold">আবার চেষ্টা করুন</button></div>`);
+    $("#exRetry").addEventListener("click", () => exSubmit(true));
+    return;
+  }
+  r.done = true;
+  const saved = lsGet("ss_ex_" + r.e.id) || {}; delete saved.token; delete saved.ans; lsSet("ss_ex_" + r.e.id, saved);
+  exResult(r.e, d);
+}
+
+/* ----- ফলাফল ----- */
+function exResult(e, d) {
+  const timeLeft = d.reviewAt - exNow();
+  exOpen(`${exTop("ফলাফল")}
+    <div class="bg-gradient-to-br from-brand-800 to-brand-700 text-white rounded-2xl p-6 text-center shadow-md">
+      <p class="text-sm text-brand-100">${esc(e.title)}</p>
+      <p class="text-5xl font-bold mt-2">${bnD(d.score)} <span class="text-2xl text-brand-100">/ ${bnD(d.total)}</span></p>
+      <div class="grid grid-cols-3 gap-2 mt-5 text-sm">
+        <div class="bg-white/10 rounded-xl py-2">✅ সঠিক<br><b class="text-lg">${bnD(d.correct)}</b></div>
+        <div class="bg-white/10 rounded-xl py-2">❌ ভুল<br><b class="text-lg">${d.wrong === null ? "-" : bnD(d.wrong)}</b></div>
+        <div class="bg-white/10 rounded-xl py-2">➖ ফাঁকা<br><b class="text-lg">${d.blank === null ? "-" : bnD(d.blank)}</b></div>
+      </div>
+      <p class="mt-4 text-sm">⏱ সময় লেগেছে ${fmtMS(d.secs)} &nbsp;•&nbsp; 🏆 এখন পর্যন্ত অবস্থান: <b>${bnD(d.rank)}</b> / ${bnD(d.of)}</p>
+    </div>
+    <p class="text-xs text-slate-500 mt-2">অন্যরা অংশ নিলে র‍্যাংকিং বদলাতে পারে। নম্বর সমান হলে যে কম সময়ে শেষ করেছে সে এগিয়ে থাকে।</p>
+    <div class="grid gap-3 mt-5">
+      <button type="button" id="exBoardBtn" class="py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold">🏆 র‍্যাংকিং তালিকা দেখুন</button>
+      ${d.review ? "" : `<p class="text-sm text-slate-600 bg-white border border-slate-200 rounded-xl p-3">✅ সঠিক উত্তর ও ব্যাখ্যা পরীক্ষার সময়সীমা শেষ হওয়ার পর (${esc(fmtDT(d.reviewAt))}-এর পর) এই পরীক্ষার কার্ডেই দেখা যাবে।</p>`}
+    </div>
+    ${d.review ? `<h3 class="font-semibold text-brand-800 mt-6 mb-3">সঠিক উত্তর ও ব্যাখ্যা</h3>${exReviewHtml(d.review)}` : ""}
+    <div class="h-10"></div>`);
+  $("#exBoardBtn").addEventListener("click", () => exBoard(e, true));
+}
+function exReviewHtml(list) {
+  return list.map((q, n) => `<section class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3">
+    <p class="font-medium leading-relaxed" style="white-space:pre-line">${bnD(n + 1)}. ${esc(q.q)}</p>
+    ${q.img ? `<img src="${esc(q.img)}" alt="প্রশ্নের ছবি" loading="lazy" referrerpolicy="no-referrer" class="rounded-lg max-h-64 mx-auto my-3" onerror="this.style.display='none'">` : ""}
+    <div class="grid gap-2 mt-3">${q.opts.map(o => {
+      const right = o.k === q.correct, mine = q.yours === o.k;
+      const cls = right ? "border-emerald-500 bg-emerald-50" : (mine ? "border-red-400 bg-red-50" : "border-slate-200 bg-white");
+      return `<div class="flex gap-3 items-start rounded-xl border px-3 py-2.5 ${cls}"><span class="shrink-0 w-7 h-7 rounded-full border border-slate-300 bg-white grid place-items-center text-sm font-semibold">${EXAM_LETTERS[o.k]}</span>
+        <span class="pt-0.5">${esc(o.t)}${right ? ' <b class="text-emerald-700">✔ সঠিক</b>' : ""}${mine && !right ? ' <b class="text-red-600">✘ আপনার উত্তর</b>' : ""}${mine && right ? ' <b class="text-emerald-700">(আপনার উত্তর)</b>' : ""}</span></div>`;
+    }).join("")}</div>
+    ${q.yours === -1 ? '<p class="text-xs text-slate-500 mt-2">এই প্রশ্নের উত্তর দেননি।</p>' : ""}
+    ${q.explain ? `<p class="text-sm text-slate-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3" style="white-space:pre-line">💡 ${esc(q.explain)}</p>` : ""}
+  </section>`).join("");
+}
+
+/* ----- র‍্যাংকিং ----- */
+async function exBoard(e, fromResult) {
+  exOpen(`${exTop("র‍্যাংকিং — " + e.title)}<p class="text-center text-slate-500 py-16">লোড হচ্ছে…</p>`);
+  let d;
+  try { d = await exApi({ action: "board", exam: e.id }); if (!d.ok) throw new Error(d.error); }
+  catch (x) { exOpen(`${exTop("র‍্যাংকিং")}<p class="text-center text-slate-600 py-16">${esc(x && x.message && x.message !== "net" && !/fetch|Failed|json|JSON/i.test(x.message) ? x.message : NET_MSG)}</p>`); return; }
+  const classes = Array.from(new Set(d.list.map(r => r.cls))).filter(Boolean);
+  const draw = f => {
+    const rows = d.list.filter(r => !f || r.cls === f);
+    const medal = n => n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : bnD(n);
+    $("#exRows").innerHTML = rows.length ? rows.map(r => `<tr class="border-t border-slate-100 ${r.rank <= 3 ? "bg-amber-50" : ""}">
+      <td class="py-2.5 pl-3 pr-2 font-semibold">${medal(r.rank)}</td><td class="py-2.5 pr-2">${esc(r.name)}</td>
+      <td class="py-2.5 pr-2 text-xs text-slate-600">${esc(r.cls)}</td><td class="py-2.5 pr-2 font-semibold text-brand-800">${bnD(r.score)}<span class="text-slate-400 text-xs">/${bnD(r.total)}</span></td>
+      <td class="py-2.5 pr-3 text-xs text-slate-600 tabular-nums">${fmtMS(r.secs)}</td></tr>`).join("")
+      : '<tr><td colspan="5" class="py-8 text-center text-slate-500">কোনো ফলাফল নেই।</td></tr>';
+  };
+  exOpen(`${exTop("র‍্যাংকিং — " + d.title)}
+    <p class="text-sm text-slate-500 mb-3">মোট অংশগ্রহণকারী: ${bnD(d.count)} জন${d.count > 100 ? " (শীর্ষ ১০০ জন দেখানো হচ্ছে)" : ""}</p>
+    ${classes.length > 1 ? `<select id="exFilter" class="${exInput} mb-3"><option value="">সব শ্রেণি</option>${classes.map(c => `<option>${esc(c)}</option>`).join("")}</select>` : ""}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"><table class="w-full text-sm">
+      <thead class="bg-brand-50 text-brand-800 text-left text-xs"><tr><th class="py-2 pl-3 pr-2">অবস্থান</th><th class="py-2 pr-2">নাম</th><th class="py-2 pr-2">শ্রেণি</th><th class="py-2 pr-2">নম্বর</th><th class="py-2 pr-3">সময়</th></tr></thead>
+      <tbody id="exRows"></tbody></table></div>
+    <p class="text-xs text-slate-500 mt-3">নম্বর সমান হলে যে কম সময়ে শেষ করেছে সে এগিয়ে। গোপনীয়তার জন্য শুধু নামের প্রথম অংশ দেখানো হয়।</p><div class="h-10"></div>`);
+  draw("");
+  const f = $("#exFilter"); if (f) f.addEventListener("change", () => draw(f.value));
+}
+
+/* ----- সঠিক উত্তর (পরীক্ষার সময়সীমা শেষে সবার জন্য) ----- */
+async function exReview(e) {
+  exOpen(`${exTop("সঠিক উত্তর — " + e.title)}<p class="text-center text-slate-500 py-16">লোড হচ্ছে…</p>`);
+  try {
+    const d = await exApi({ action: "review", exam: e.id });
+    if (!d.ok) { exOpen(`${exTop("সঠিক উত্তর")}<p class="text-center text-slate-600 py-16">${esc(d.error || "এখন দেখা যাচ্ছে না।")}</p>`); return; }
+    exOpen(`${exTop("সঠিক উত্তর — " + d.title)}${exReviewHtml(d.review)}<div class="h-10"></div>`);
+  } catch (x) { exOpen(`${exTop("সঠিক উত্তর")}<p class="text-center text-slate-600 py-16">${NET_MSG}</p>`); }
+}
+
+if (CONFIG.examApi) exLoad();
 
 /* ---------- Extra sections ---------- */
 const WHY = [
