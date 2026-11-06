@@ -71,6 +71,7 @@
         <span class="block text-[10px] sm:text-xs leading-snug text-slate-500 mt-1">স্বপ্ন থেকে সাফল্যে, পাশে আছে সময় সোপান</span>
       </span>
     </a>
+    <div class="flex items-center gap-2 shrink-0">
     <nav class="hidden lg:flex items-center gap-1 text-[15px] font-medium">
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#home">হোম</a>
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#about">আমাদের সম্পর্কে</a>
@@ -81,10 +82,12 @@
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#contact">যোগাযোগ</a>
       <a href="#admission" class="ml-2 px-4 py-2 rounded-lg bg-gold-500 text-white hover:bg-gold-400">ভর্তি</a>
     </nav>
+    <button id="authBtn" type="button" class="hidden px-3 py-1.5 rounded-lg border border-brand-700 text-brand-700 hover:bg-brand-50 text-sm font-semibold whitespace-nowrap max-w-[8.5rem] truncate">সাইন ইন</button>
     <button id="menuBtn" aria-label="মেনু" aria-expanded="false" class="lg:hidden p-2 rounded-lg hover:bg-slate-100">
       <svg id="iconOpen" class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       <svg id="iconClose" class="w-7 h-7 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
+    </div>
   </div>
   <div id="mobileMenu" class="hidden lg:hidden border-t bg-white">
     <div class="px-4 py-3 grid gap-1 text-base font-medium">
@@ -377,7 +380,8 @@ const CONFIG = {
   googleFormLink: "https://docs.google.com/forms/d/e/1FAIpQLScTIvKmMBCAiFZxCzm8YwG1QKso0hsbc2Qim4iTeP7SbRjbsA/viewform?usp=pp_url&entry.2003913796=NAME&entry.1214172656=PHONE&entry.500572022=COURSE&entry.1159213273=BATCH&entry.527456532=NOTE",                  // Google Form-এর "Pre-filled link" (নিচের নির্দেশনা দেখুন) — বসালে আবেদন সরাসরি Google Form-এ জমা হবে
   applyScript: "",                     // Google Apps Script Web App লিংক (admission-mailer.gs) — বসালে আবেদন আপনার Gmail ও Sheet-এ যাবে
   noticeSheet: "",                     // ← এখানে নোটিশের Web app লিংক বসবে (notice-sheet.gs চালানোর পর পাওয়া /exec লিংক)
-  examApi: "https://script.google.com/macros/s/AKfycbzu5fZD2XsV9eDqJ2nrlK1gR1w0OysZLYO_y8pAfqGbg0MQvW8Yp-5JQrUYYXih2Iv01w/exec"                          // ← এখানে পরীক্ষার Web app লিংক বসবে (exam-backend.gs চালানোর পর পাওয়া /exec লিংক); ফাঁকা থাকলে পরীক্ষার অংশ লুকানো থাকবে
+  examApi: "https://script.google.com/macros/s/AKfycbzKxhGLfUMsBfShR8wrAu8j01h2_zNlZ6Xe22yCgCJ1PCQKN2-peYhXgjWfS4yYyAzr/exec",                         // ← এখানে পরীক্ষার Web app লিংক বসবে (exam-backend.gs চালানোর পর পাওয়া /exec লিংক); ফাঁকা থাকলে পরীক্ষার অংশ লুকানো থাকবে
+  firebase: null                       // ← সাইন ইন চাইলে Firebase-এর কনফিগ এখানে বসবে, যেমন: { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }; null থাকলে সাইন ইন বোতাম লুকানো থাকবে
 };
 
 const MENTORS = [
@@ -708,11 +712,17 @@ const exNow = () => Date.now() + ex.offset;
 const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-function exApi(params) {
+const au = { fb: null, user: null, profile: null, then: null, ready: false };
+async function exApi(params) {
+  if (au.user) { try { params.idt = await au.user.getIdToken(); } catch (e) {} }
   const u = new URL(CONFIG.examApi);
   Object.keys(params).forEach(k => u.searchParams.set(k, params[k]));
   u.searchParams.set("_", Date.now());
-  return fetch(u.toString(), { cache: "no-store" }).then(r => { if (!r.ok) throw new Error("net"); return r.json(); });
+  const r = await fetch(u.toString(), { cache: "no-store" });
+  if (!r.ok) throw new Error("net");
+  const d = await r.json();
+  if (d && d.code === "auth" && au.fb) { au.fb.signOut().catch(() => {}); }   // মেয়াদোত্তীর্ণ সাইন ইন
+  return d;
 }
 const NET_MSG = "ইন্টারনেট সংযোগে সমস্যা হচ্ছে। সংযোগ দেখে আবার চেষ্টা করুন।";
 
@@ -733,19 +743,31 @@ function shuffled(arr, rnd) {
 
 /* ----- তালিকা ----- */
 function exStatus(e) { const n = exNow(); return n < e.start ? "upcoming" : (n <= e.end ? "live" : "ended"); }
+function exFetchList() {
+  return exApi({ action: "list" }).then(d => {
+    if (!d.ok) throw new Error("bad");
+    ex.offset = d.now - Date.now();
+    ex.exams = d.exams; ex.settings = d.pay || {}; ex.enrolled = !!d.enrolled;
+    return d;
+  });
+}
 function exLoad() {
   const grid = $("#examGrid");
   $("#exams").classList.remove("hidden");
   document.querySelectorAll(".examNav").forEach(a => a.classList.remove("hidden"));
-  grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">পরীক্ষার তালিকা লোড হচ্ছে…</p>';
-  exApi({ action: "list" }).then(d => {
-    if (!d.ok) throw new Error("bad");
-    ex.offset = d.now - Date.now();
-    ex.exams = d.exams;
-    exRender();
-  }).catch(() => {
-    grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">এই মুহূর্তে পরীক্ষার তালিকা আনা যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।</p>';
+  if (!ex.exams.length) grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">পরীক্ষার তালিকা লোড হচ্ছে…</p>';
+  return exFetchList().then(exRender).catch(() => {
+    if (!ex.exams.length) grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">এই মুহূর্তে পরীক্ষার তালিকা আনা যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।</p>';
   });
+}
+function exAction(e, st) {
+  const id = esc(e.id);
+  if (st === "upcoming") return `<div class="w-full py-3 rounded-xl bg-slate-100 text-slate-500 text-center font-medium">${esc(fmtDT(e.start))} থেকে শুরু</div>`;
+  if (st !== "live") return "";
+  if (e.access === "login") return `<button type="button" data-act="login-start" data-id="${id}" class="w-full py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold">🔒 সাইন ইন করে পরীক্ষা দিন</button>`;
+  if (e.access === "locked") return `<button type="button" data-act="pay" data-id="${id}" class="w-full py-3 rounded-xl bg-gold-500 hover:bg-gold-400 text-white font-semibold">🔓 আনলক করুন — ৳${bnD(e.fee)}</button>`;
+  if (e.access === "pending") return `<div class="w-full py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-center font-medium">⏳ পেমেন্ট যাচাই চলছে</div>`;
+  return `<button type="button" data-act="start" data-id="${id}" class="w-full py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold">পরীক্ষা দিন</button>`;
 }
 function exRender() {
   const grid = $("#examGrid");
@@ -759,19 +781,20 @@ function exRender() {
   grid.innerHTML = list.map(e => {
     const st = exStatus(e), b = badge[st];
     const canReview = exNow() >= e.reviewAt;
+    const unlocked = e.paid && e.access === "granted";
     return `<article class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col">
       <div class="flex items-center justify-between gap-2 mb-2">
         <span class="text-xs rounded-full px-3 py-1 font-medium ${b[1]}">${b[0]}</span>
-        ${e.cls ? `<span class="text-xs text-slate-500">${esc(e.cls)}</span>` : ""}
+        ${e.paid ? `<span class="text-xs rounded-full px-3 py-1 font-semibold ${unlocked ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gold-500/15 text-amber-800 border border-amber-300"}">${unlocked ? "✔ আনলক" : "💰 পেইড ৳" + bnD(e.fee)}</span>` : `<span class="text-xs rounded-full px-3 py-1 font-semibold bg-sky-50 text-sky-700 border border-sky-200">ফ্রি</span>`}
       </div>
       <h3 class="font-semibold text-lg text-brand-800 leading-snug">${esc(e.title)}</h3>
+      ${e.cls ? `<p class="text-xs text-slate-500 mt-0.5">${esc(e.cls)}</p>` : ""}
       <ul class="text-sm text-slate-600 mt-3 space-y-1">
         <li>📝 ${bnD(e.count)}টি প্রশ্ন &nbsp;•&nbsp; ⏱ ${bnD(e.dur)} মিনিট</li>
         <li>🗓 ${esc(fmtDT(e.start))} — ${esc(fmtDT(e.end))}</li>
       </ul>
       <div class="mt-auto pt-4 grid gap-2">
-        ${st === "live" ? `<button type="button" data-act="start" data-id="${esc(e.id)}" class="w-full py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold">পরীক্ষা দিন</button>` : ""}
-        ${st === "upcoming" ? `<div class="w-full py-3 rounded-xl bg-slate-100 text-slate-500 text-center font-medium">${esc(fmtDT(e.start))} থেকে শুরু</div>` : ""}
+        ${exAction(e, st)}
         <div class="grid grid-cols-${st === "ended" && canReview ? 2 : 1} gap-2">
           ${st !== "upcoming" ? `<button type="button" data-act="board" data-id="${esc(e.id)}" class="py-2.5 rounded-xl border-2 border-brand-700 text-brand-700 hover:bg-brand-50 font-semibold text-sm">🏆 র‍্যাংকিং</button>` : ""}
           ${st === "ended" && canReview ? `<button type="button" data-act="review" data-id="${esc(e.id)}" class="py-2.5 rounded-xl border-2 border-gold-500 text-amber-700 hover:bg-amber-50 font-semibold text-sm">✅ সঠিক উত্তর</button>` : ""}
@@ -780,11 +803,25 @@ function exRender() {
     </article>`;
   }).join("");
 }
+// সাইন ইন করা থাকলে সরাসরি, না হলে সাইন ইন করিয়ে তারপর কাজটি চালায়
+function exRequireLogin(then) { if (au.user) then(); else exAuth("in", "", then); }
+// সাইন ইনের পর সর্বশেষ অবস্থা এনে পরীক্ষার ধাপে যায়
+async function exGo(id) {
+  try { await exFetchList(); exRender(); } catch (x) {}
+  const e = ex.exams.find(x => x.id === id); if (!e) return exClose(true);
+  if (e.access === "login") return exAuth("in", "", () => exGo(id));
+  if (e.access === "locked") return exPay(e);
+  if (e.access === "pending") return exOpen(`${exTop(e.title)}<div class="text-center py-16"><div class="text-4xl mb-3">⏳</div><p class="font-semibold text-brand-800">আপনার পেমেন্ট যাচাই চলছে</p><p class="text-sm text-slate-600 mt-2">অনুমোদন হলেই পরীক্ষা খুলে যাবে।</p></div>`);
+  exEntry(e);
+}
 $("#examGrid").addEventListener("click", ev => {
   const b = ev.target.closest("button[data-act]"); if (!b) return;
   const e = ex.exams.find(x => x.id === b.dataset.id); if (!e) return;
-  if (b.dataset.act === "start") exEntry(e);
-  else if (b.dataset.act === "board") exBoard(e);
+  const a = b.dataset.act;
+  if (a === "start") exEntry(e);
+  else if (a === "login-start") { if (au.user) exGo(e.id); else exAuth("in", "", () => exGo(e.id)); }
+  else if (a === "pay") exRequireLogin(() => exPay(e));
+  else if (a === "board") exBoard(e);
   else exReview(e);
 });
 
@@ -797,7 +834,7 @@ function exOpen(html) {
 }
 function exClose(force) {
   if (ex.run && !ex.run.done && !force && !confirm("পরীক্ষা চলছে! এখন বের হলেও টাইমার চলতে থাকবে। একই মোবাইল নম্বর দিয়ে সময় থাকতে আবার ঢুকে চালিয়ে যেতে পারবেন। বের হবেন?")) return;
-  clearInterval(ex.tick); ex.run = null;
+  clearInterval(ex.tick); ex.run = null; au.then = null;
   $("#examModal").classList.add("hidden");
   document.body.style.overflow = "";
   exLoad();
@@ -812,23 +849,25 @@ window.addEventListener("beforeunload", e => { if (ex.run && !ex.run.done) { e.p
 /* ----- প্রবেশ ফরম ----- */
 function exEntry(e, msg) {
   const saved = lsGet("ss_ex_" + e.id) || {};
+  const pf = au.profile || {};
   exOpen(`${exTop(e.title)}
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <ul class="text-sm text-slate-600 space-y-1 mb-4">
         <li>📝 ${bnD(e.count)}টি প্রশ্ন &nbsp;•&nbsp; ⏱ ${bnD(e.dur)} মিনিট</li>
         <li>⚠ "পরীক্ষা শুরু করুন" চাপলেই টাইমার চালু হবে; সময় শেষ হলে উত্তর নিজে থেকেই জমা হবে।</li>
-        <li>একই মোবাইল নম্বর দিয়ে একবারই অংশ নেওয়া যাবে।</li>
+        <li>একই মোবাইল নম্বর${au.user ? "/অ্যাকাউন্ট" : ""} দিয়ে একবারই অংশ নেওয়া যাবে।</li>
         <li>ভুল উত্তরে নম্বর কাটা যাবে না।</li>
         ${e.info ? `<li class="text-slate-700">${esc(e.info)}</li>` : ""}
       </ul>
       <form id="exForm" class="grid gap-4" novalidate>
         <div><label class="block text-sm font-medium mb-1" for="exName">নাম *</label>
-          <input id="exName" type="text" maxlength="60" placeholder="আপনার নাম" value="${esc(saved.name || "")}" class="${exInput}"></div>
+          <input id="exName" type="text" maxlength="60" placeholder="আপনার নাম" value="${esc(pf.name || saved.name || "")}" class="${exInput}"></div>
         <div><label class="block text-sm font-medium mb-1" for="exPhone">মোবাইল নম্বর *</label>
-          <input id="exPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="01XXXXXXXXX" value="${esc(saved.phone || "")}" class="${exInput}"></div>
+          <input id="exPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="01XXXXXXXXX" value="${esc(pf.phone || saved.phone || "")}" class="${exInput}"></div>
         <div><label class="block text-sm font-medium mb-1" for="exCls">শ্রেণি *</label>
-          <select id="exCls" class="${exInput}"><option value="">-- শ্রেণি নির্বাচন করুন --</option>${EXAM_CLASSES.map(c => `<option ${saved.cls === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+          <select id="exCls" class="${exInput}"><option value="">-- শ্রেণি নির্বাচন করুন --</option>${EXAM_CLASSES.map(c => `<option ${(pf.cls || saved.cls) === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
         <p id="exErr" class="${msg ? "" : "hidden "}text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">${esc(msg || "")}</p>
+        <div id="exErrExtra"></div>
         <button id="exGo" type="submit" class="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold text-lg">পরীক্ষা শুরু করুন</button>
         <p class="text-xs text-slate-500">র‍্যাংকিং তালিকায় শুধু নামের প্রথম অংশ, শ্রেণি ও নম্বর দেখানো হয়; মোবাইল নম্বর কাউকে দেখানো হয় না।</p>
       </form></div>`);
@@ -844,7 +883,11 @@ function exEntry(e, msg) {
       const d = await exApi({ action: "start", exam: e.id, name, phone, cls });
       if (!d.ok) {
         btn.disabled = false; btn.textContent = "পরীক্ষা শুরু করুন"; err(d.error || "শুরু করা যায়নি।");
-        if (d.code === "done") $("#exErr").insertAdjacentHTML("afterend", `<button type="button" id="exSeeBoard" class="py-2.5 rounded-xl border-2 border-brand-700 text-brand-700 font-semibold">🏆 র‍্যাংকিং দেখুন</button>`), $("#exSeeBoard").addEventListener("click", () => exBoard(e));
+        const extra = $("#exErrExtra");
+        const add = (id, label, fn) => { extra.innerHTML = `<button type="button" id="${id}" class="w-full py-2.5 rounded-xl border-2 border-brand-700 text-brand-700 font-semibold">${label}</button>`; $("#" + id).addEventListener("click", fn); };
+        if (d.code === "done") add("exSeeBoard", "🏆 র‍্যাংকিং দেখুন", () => exBoard(e));
+        else if (d.code === "login" || d.code === "auth") add("exSeeLogin", "সাইন ইন করুন", () => exAuth("in", "", () => exGo(e.id)));
+        else if (d.code === "locked") add("exSeePay", "🔓 আনলক করুন — ৳" + bnD(e.fee), () => exPay(e));
         return;
       }
       lsSet("ss_ex_" + e.id, Object.assign(saved, { name, phone, cls }));
@@ -941,7 +984,6 @@ async function exSubmit(auto) {
 
 /* ----- ফলাফল ----- */
 function exResult(e, d) {
-  const timeLeft = d.reviewAt - exNow();
   exOpen(`${exTop("ফলাফল")}
     <div class="bg-gradient-to-br from-brand-800 to-brand-700 text-white rounded-2xl p-6 text-center shadow-md">
       <p class="text-sm text-brand-100">${esc(e.title)}</p>
@@ -957,10 +999,13 @@ function exResult(e, d) {
     <div class="grid gap-3 mt-5">
       <button type="button" id="exBoardBtn" class="py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold">🏆 র‍্যাংকিং তালিকা দেখুন</button>
       ${d.review ? "" : `<p class="text-sm text-slate-600 bg-white border border-slate-200 rounded-xl p-3">✅ সঠিক উত্তর ও ব্যাখ্যা পরীক্ষার সময়সীমা শেষ হওয়ার পর (${esc(fmtDT(d.reviewAt))}-এর পর) এই পরীক্ষার কার্ডেই দেখা যাবে।</p>`}
+      ${!d.review && !au.user && CONFIG.firebase ? `<p class="text-sm text-brand-800 bg-brand-50 border border-brand-100 rounded-xl p-3">💡 সাইন ইন করে পরীক্ষা দিলে ফল জমা থাকে এবং জমা দেওয়ার পরপরই সঠিক উত্তর ও ব্যাখ্যা দেখা যায়।</p>` : ""}
+      ${au.user ? `<button type="button" id="exMyBtn" class="py-3 rounded-xl border-2 border-brand-700 text-brand-700 font-semibold">📋 আমার পাতা (সব ফল)</button>` : ""}
     </div>
     ${d.review ? `<h3 class="font-semibold text-brand-800 mt-6 mb-3">সঠিক উত্তর ও ব্যাখ্যা</h3>${exReviewHtml(d.review)}` : ""}
     <div class="h-10"></div>`);
   $("#exBoardBtn").addEventListener("click", () => exBoard(e, true));
+  const my = $("#exMyBtn"); if (my) my.addEventListener("click", () => exMyPage());
 }
 function exReviewHtml(list) {
   return list.map((q, n) => `<section class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3">
@@ -984,14 +1029,15 @@ async function exBoard(e, fromResult) {
   try { d = await exApi({ action: "board", exam: e.id }); if (!d.ok) throw new Error(d.error); }
   catch (x) { exOpen(`${exTop("র‍্যাংকিং")}<p class="text-center text-slate-600 py-16">${esc(x && x.message && x.message !== "net" && !/fetch|Failed|json|JSON/i.test(x.message) ? x.message : NET_MSG)}</p>`); return; }
   const classes = Array.from(new Set(d.list.map(r => r.cls))).filter(Boolean);
+  const medal = n => n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : bnD(n);
+  const row = r => `<tr class="border-t border-slate-100 ${r.me ? "bg-brand-50 font-semibold ring-1 ring-inset ring-brand-500" : (r.rank <= 3 ? "bg-amber-50" : "")}">
+      <td class="py-2.5 pl-3 pr-2 font-semibold">${medal(r.rank)}</td><td class="py-2.5 pr-2">${esc(r.name)}${r.me ? ' <span class="text-[11px] text-brand-700">(আপনি)</span>' : ""}</td>
+      <td class="py-2.5 pr-2 text-xs text-slate-600">${esc(r.cls)}</td><td class="py-2.5 pr-2 font-semibold text-brand-800">${bnD(r.score)}<span class="text-slate-400 text-xs">/${bnD(r.total)}</span></td>
+      <td class="py-2.5 pr-3 text-xs text-slate-600 tabular-nums">${fmtMS(r.secs)}</td></tr>`;
   const draw = f => {
     const rows = d.list.filter(r => !f || r.cls === f);
-    const medal = n => n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : bnD(n);
-    $("#exRows").innerHTML = rows.length ? rows.map(r => `<tr class="border-t border-slate-100 ${r.rank <= 3 ? "bg-amber-50" : ""}">
-      <td class="py-2.5 pl-3 pr-2 font-semibold">${medal(r.rank)}</td><td class="py-2.5 pr-2">${esc(r.name)}</td>
-      <td class="py-2.5 pr-2 text-xs text-slate-600">${esc(r.cls)}</td><td class="py-2.5 pr-2 font-semibold text-brand-800">${bnD(r.score)}<span class="text-slate-400 text-xs">/${bnD(r.total)}</span></td>
-      <td class="py-2.5 pr-3 text-xs text-slate-600 tabular-nums">${fmtMS(r.secs)}</td></tr>`).join("")
-      : '<tr><td colspan="5" class="py-8 text-center text-slate-500">কোনো ফলাফল নেই।</td></tr>';
+    $("#exRows").innerHTML = (rows.length ? rows.map(row).join("") : '<tr><td colspan="5" class="py-8 text-center text-slate-500">কোনো ফলাফল নেই।</td></tr>')
+      + (d.mine && !f ? '<tr><td colspan="5" class="text-center text-slate-400 text-xs py-1">⋮</td></tr>' + row(d.mine) : "");
   };
   exOpen(`${exTop("র‍্যাংকিং — " + d.title)}
     <p class="text-sm text-slate-500 mb-3">মোট অংশগ্রহণকারী: ${bnD(d.count)} জন${d.count > 100 ? " (শীর্ষ ১০০ জন দেখানো হচ্ছে)" : ""}</p>
@@ -999,22 +1045,250 @@ async function exBoard(e, fromResult) {
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"><table class="w-full text-sm">
       <thead class="bg-brand-50 text-brand-800 text-left text-xs"><tr><th class="py-2 pl-3 pr-2">অবস্থান</th><th class="py-2 pr-2">নাম</th><th class="py-2 pr-2">শ্রেণি</th><th class="py-2 pr-2">নম্বর</th><th class="py-2 pr-3">সময়</th></tr></thead>
       <tbody id="exRows"></tbody></table></div>
-    <p class="text-xs text-slate-500 mt-3">নম্বর সমান হলে যে কম সময়ে শেষ করেছে সে এগিয়ে। গোপনীয়তার জন্য শুধু নামের প্রথম অংশ দেখানো হয়।</p><div class="h-10"></div>`);
+    <p class="text-xs text-slate-500 mt-3">নম্বর সমান হলে যে কম সময়ে শেষ করেছে সে এগিয়ে। গোপনীয়তার জন্য শুধু নামের প্রথম অংশ দেখানো হয়।${au.user ? "" : " সাইন ইন করে পরীক্ষা দিলে এখানে আপনার অবস্থান আলাদা করে চিহ্নিত থাকে।"}</p><div class="h-10"></div>`);
   draw("");
   const f = $("#exFilter"); if (f) f.addEventListener("change", () => draw(f.value));
 }
 
-/* ----- সঠিক উত্তর (পরীক্ষার সময়সীমা শেষে সবার জন্য) ----- */
+/* ----- সঠিক উত্তর (পরীক্ষার সময়সীমা শেষে সবার জন্য; সাইন ইন করা অংশগ্রহণকারী নিজের পরীক্ষার উত্তর আগেই দেখে) ----- */
 async function exReview(e) {
   exOpen(`${exTop("সঠিক উত্তর — " + e.title)}<p class="text-center text-slate-500 py-16">লোড হচ্ছে…</p>`);
   try {
     const d = await exApi({ action: "review", exam: e.id });
-    if (!d.ok) { exOpen(`${exTop("সঠিক উত্তর")}<p class="text-center text-slate-600 py-16">${esc(d.error || "এখন দেখা যাচ্ছে না।")}</p>`); return; }
+    if (!d.ok) {
+      exOpen(`${exTop("সঠিক উত্তর")}<div class="text-center py-14"><p class="text-slate-700">${esc(d.error || "এখন দেখা যাচ্ছে না।")}</p>
+        <div id="exRvAct" class="mt-5"></div></div>`);
+      const full = ex.exams.find(x => x.id === e.id) || e;
+      const act = $("#exRvAct");
+      if (d.code === "login") { act.innerHTML = '<button type="button" id="exRvB" class="px-6 py-3 rounded-xl bg-brand-700 text-white font-semibold">সাইন ইন করুন</button>'; $("#exRvB").addEventListener("click", () => exAuth("in", "", () => exReview(e))); }
+      else if (d.code === "locked") { act.innerHTML = `<button type="button" id="exRvB" class="px-6 py-3 rounded-xl bg-gold-500 text-white font-semibold">🔓 আনলক করুন — ৳${bnD(full.fee || 0)}</button>`; $("#exRvB").addEventListener("click", () => exPay(full)); }
+      return;
+    }
     exOpen(`${exTop("সঠিক উত্তর — " + d.title)}${exReviewHtml(d.review)}<div class="h-10"></div>`);
   } catch (x) { exOpen(`${exTop("সঠিক উত্তর")}<p class="text-center text-slate-600 py-16">${NET_MSG}</p>`); }
 }
 
-if (CONFIG.examApi) exLoad();
+/* ----- সাইন ইন / সাইন আপ (Firebase Authentication) ----- */
+// CONFIG.firebase ফাঁকা থাকলে সাইন ইনের বোতাম লুকানো থাকবে।
+const AUTH_ERR = {
+  "auth/invalid-credential": "ইমেইল বা পাসওয়ার্ড ঠিক নয়।", "auth/wrong-password": "ইমেইল বা পাসওয়ার্ড ঠিক নয়।", "auth/user-not-found": "এই ইমেইলে কোনো অ্যাকাউন্ট নেই। আগে সাইন আপ করুন।",
+  "auth/email-already-in-use": "এই ইমেইলে আগেই অ্যাকাউন্ট আছে। সাইন ইন করুন।", "auth/weak-password": "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের দিন।", "auth/invalid-email": "সঠিক ইমেইল লিখুন।",
+  "auth/popup-closed-by-user": "সাইন ইন সম্পন্ন হয়নি। আবার চেষ্টা করুন।", "auth/cancelled-popup-request": "সাইন ইন সম্পন্ন হয়নি। আবার চেষ্টা করুন।",
+  "auth/popup-blocked": "পপআপ আটকে গেছে। ব্রাউজারে পপআপের অনুমতি দিয়ে আবার চেষ্টা করুন, অথবা ইমেইল দিয়ে সাইন ইন করুন।",
+  "auth/too-many-requests": "অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", "auth/network-request-failed": NET_MSG, "auth/missing-password": "পাসওয়ার্ড দিন।",
+  "auth/unauthorized-domain": "এই ওয়েবসাইটের ঠিকানা সাইন ইনের জন্য অনুমোদিত নয় (Firebase → Authorized domains-এ যোগ করতে হবে)।"
+};
+const authMsg = e => AUTH_ERR[e && e.code] || "সাইন ইন করা যায়নি। আবার চেষ্টা করুন।";
+function loadScript(src) { return new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); }
+function authBtnUpdate() {
+  const b = $("#authBtn"); if (!b) return;
+  const nm = au.user ? ((au.profile && au.profile.name) || au.user.displayName || au.user.email || "আমি").split(" ")[0] : "";
+  b.textContent = au.user ? "👤 " + nm : "সাইন ইন";
+}
+async function authInit() {
+  const c = CONFIG.firebase;
+  if (!c || !c.apiKey || !CONFIG.examApi) return false;
+  $("#authBtn").classList.remove("hidden");
+  $("#authBtn").addEventListener("click", () => { if (au.user) exMyPage(); else exAuth("in", "", null); });
+  try {
+    const v = "10.12.2";
+    await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-app-compat.js`);
+    await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-auth-compat.js`);
+    firebase.initializeApp(c);
+    au.fb = firebase.auth(); au.fb.languageCode = "bn";
+    au.fb.onAuthStateChanged(async u => {
+      au.user = u; au.ready = true;
+      if (!u) au.profile = null;
+      authBtnUpdate();
+      await exLoad();
+      if (u) { try { const d = await exApi({ action: "me" }); if (d.ok) { au.profile = d.profile; authBtnUpdate(); } } catch (x) {} }
+    });
+  } catch (e) { au.fb = null; return "failed"; }
+  return true;
+}
+
+function exAuth(mode, msg, then) {
+  if (then !== undefined) au.then = then;
+  const up = mode === "up";
+  if (!au.fb) { exOpen(`${exTop("সাইন ইন")}<p class="text-center text-slate-600 py-16">সাইন ইন এই মুহূর্তে চালু করা যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।</p>`); return; }
+  exOpen(`${exTop(up ? "সাইন আপ (নতুন অ্যাকাউন্ট)" : "সাইন ইন")}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 grid gap-4">
+      <p class="text-sm text-slate-600">${au.then ? "পেইড পরীক্ষা দিতে সাইন ইন করতে হয়। " : ""}সাইন ইন করলে আপনার ফল জমা থাকে, নাম-মোবাইল নিজে থেকে বসে যায়, এবং জমা দেওয়ার পরপরই সঠিক উত্তর ও ব্যাখ্যা দেখা যায়।</p>
+      <button type="button" id="auGoogle" class="w-full py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 font-semibold flex items-center justify-center gap-2">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+        Google দিয়ে চালিয়ে যান</button>
+      <div class="flex items-center gap-3 text-xs text-slate-400"><span class="h-px bg-slate-200 flex-1"></span>অথবা ইমেইল দিয়ে<span class="h-px bg-slate-200 flex-1"></span></div>
+      <form id="auForm" class="grid gap-3" novalidate>
+        ${up ? `<div><label class="block text-sm font-medium mb-1" for="auName">নাম *</label><input id="auName" type="text" maxlength="60" autocomplete="name" class="${exInput}"></div>` : ""}
+        <div><label class="block text-sm font-medium mb-1" for="auEmail">ইমেইল *</label><input id="auEmail" type="email" autocomplete="email" class="${exInput}"></div>
+        <div><label class="block text-sm font-medium mb-1" for="auPass">পাসওয়ার্ড *</label><input id="auPass" type="password" autocomplete="${up ? "new-password" : "current-password"}" placeholder="${up ? "কমপক্ষে ৬ অক্ষর" : ""}" class="${exInput}"></div>
+        <p id="auErr" class="${msg ? "" : "hidden "}text-sm rounded-lg px-3 py-2 ${/^✅/.test(msg || "") ? "text-emerald-800 bg-emerald-50 border border-emerald-200" : "text-red-700 bg-red-50 border border-red-200"}">${esc(msg || "")}</p>
+        <button id="auGo" type="submit" class="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold text-lg">${up ? "সাইন আপ করুন" : "সাইন ইন করুন"}</button>
+      </form>
+      <div class="flex items-center justify-between text-sm">
+        <button type="button" id="auSwitch" class="text-brand-700 font-medium underline">${up ? "অ্যাকাউন্ট আছে? সাইন ইন" : "নতুন? সাইন আপ করুন"}</button>
+        ${up ? "" : '<button type="button" id="auForgot" class="text-slate-500 underline">পাসওয়ার্ড ভুলে গেছেন?</button>'}
+      </div>
+      <p class="text-xs text-slate-500">Facebook/Messenger-এর ভেতরের ব্রাউজারে Google সাইন ইন নাও চলতে পারে — তখন Chrome-এ সাইটটি খুলুন অথবা ইমেইল দিয়ে সাইন ইন করুন। আমরা আপনার পাসওয়ার্ড দেখতে বা জমা রাখতে পারি না।</p>
+    </div>`);
+  const err = (t, good) => { const p = $("#auErr"); if (!p) return; p.textContent = t; p.className = "text-sm rounded-lg px-3 py-2 " + (good ? "text-emerald-800 bg-emerald-50 border border-emerald-200" : "text-red-700 bg-red-50 border border-red-200"); };
+  const busy = on => { const b = $("#auGo"); if (b) { b.disabled = on; b.textContent = on ? "অপেক্ষা করুন…" : (up ? "সাইন আপ করুন" : "সাইন ইন করুন"); } };
+  $("#auSwitch").addEventListener("click", () => exAuth(up ? "in" : "up"));
+  $("#auGoogle").addEventListener("click", async () => {
+    try { await au.fb.signInWithPopup(new firebase.auth.GoogleAuthProvider()); await exAfterAuth(); }
+    catch (e) { err(authMsg(e)); }
+  });
+  const fg = $("#auForgot");
+  if (fg) fg.addEventListener("click", async () => {
+    const em = $("#auEmail").value.trim(); if (!em) return err("আগে ওপরে আপনার ইমেইল লিখুন।");
+    try { await au.fb.sendPasswordResetEmail(em); err("✅ পাসওয়ার্ড বদলানোর লিংক ইমেইলে পাঠানো হয়েছে (Spam ফোল্ডারও দেখুন)।", true); } catch (e) { err(authMsg(e)); }
+  });
+  $("#auForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const em = $("#auEmail").value.trim(), pw = $("#auPass").value, nm = up ? $("#auName").value.trim() : "";
+    if (up && nm.length < 2) return err("আপনার নাম লিখুন।");
+    if (!em) return err("ইমেইল লিখুন।");
+    if (!pw) return err("পাসওয়ার্ড দিন।");
+    busy(true);
+    try {
+      if (up) { const c = await au.fb.createUserWithEmailAndPassword(em, pw); try { await c.user.updateProfile({ displayName: nm }); } catch (x) {} }
+      else await au.fb.signInWithEmailAndPassword(em, pw);
+      await exAfterAuth();
+    } catch (e) { busy(false); err(authMsg(e)); }
+  });
+}
+
+// সাইন ইনের পর: প্রোফাইল অসম্পূর্ণ হলে পূরণ করায়, নইলে আটকে থাকা কাজে বা "আমার পাতা"-য় যায়
+async function exAfterAuth() {
+  exOpen('<p class="text-center text-slate-500 py-24">লোড হচ্ছে…</p>');
+  let d = null;
+  try { d = await exApi({ action: "me" }); } catch (x) {}
+  if (d && d.ok) au.profile = d.profile;
+  authBtnUpdate();
+  const then = au.then; au.then = null;
+  if (!au.profile || !au.profile.phone || !au.profile.cls || !au.profile.name) return exProfileForm(then, true);
+  if (then) then(); else exMyPage(d);
+}
+
+function exProfileForm(then, first, msg) {
+  const pf = au.profile || {};
+  exOpen(`${exTop(first ? "আপনার তথ্য দিন" : "প্রোফাইল বদলান")}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <p class="text-sm text-slate-600 mb-4">${first ? "একবার তথ্য দিলেই হবে — পরের বার পরীক্ষার ফরমে এগুলো নিজে থেকে বসে যাবে।" : ""}</p>
+      <form id="pfForm" class="grid gap-4" novalidate>
+        <div><label class="block text-sm font-medium mb-1" for="pfName">নাম *</label><input id="pfName" type="text" maxlength="60" value="${esc(pf.name || (au.user && au.user.displayName) || "")}" class="${exInput}"></div>
+        <div><label class="block text-sm font-medium mb-1" for="pfPhone">মোবাইল নম্বর *</label><input id="pfPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="01XXXXXXXXX" value="${esc(pf.phone || "")}" class="${exInput}"></div>
+        <div><label class="block text-sm font-medium mb-1" for="pfCls">শ্রেণি *</label><select id="pfCls" class="${exInput}"><option value="">-- শ্রেণি নির্বাচন করুন --</option>${EXAM_CLASSES.map(c => `<option ${pf.cls === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+        <p id="pfErr" class="${msg ? "" : "hidden "}text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">${esc(msg || "")}</p>
+        <button id="pfGo" type="submit" class="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold text-lg">সংরক্ষণ করুন</button>
+        <p class="text-xs text-slate-500">আপনার মোবাইল নম্বর র‍্যাংকিংসহ কোথাও কাউকে দেখানো হয় না।</p>
+      </form></div>`);
+  $("#pfForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const name = $("#pfName").value.trim(), phone = $("#pfPhone").value.trim(), cls = $("#pfCls").value;
+    const err = t => { const p = $("#pfErr"); p.textContent = t; p.classList.remove("hidden"); };
+    if (name.length < 2) return err("আপনার নাম লিখুন।");
+    if (!/^(\+?88)?01[3-9][\d০-৯]{8}$/.test(phone.replace(/[\s-]/g, "").replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d)))) return err("সঠিক মোবাইল নম্বর দিন (যেমন 01XXXXXXXXX)।");
+    if (!cls) return err("শ্রেণি বেছে নিন।");
+    const b = $("#pfGo"); b.disabled = true; b.textContent = "অপেক্ষা করুন…";
+    try {
+      const d = await exApi({ action: "profile", name, phone, cls });
+      if (!d.ok) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; return err(d.error || "সংরক্ষণ করা যায়নি।"); }
+      au.profile = Object.assign({}, au.profile, { name, phone: phone.replace(/[০-৯]/g, c => "০১২৩৪৫৬৭৮৯".indexOf(c)).replace(/\D/g, "").replace(/^88/, ""), cls });
+      authBtnUpdate();
+      if (then) then(); else exMyPage();
+    } catch (x) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; err(NET_MSG); }
+  });
+}
+
+/* ----- আমার পাতা ----- */
+async function exMyPage(pre) {
+  if (!au.user) return exAuth("in");
+  exOpen(`${exTop("আমার পাতা")}<p class="text-center text-slate-500 py-16">লোড হচ্ছে…</p>`);
+  let d = pre;
+  try { if (!d || !d.ok) d = await exApi({ action: "me" }); } catch (x) { d = null; }
+  if (!d || !d.ok) { exOpen(`${exTop("আমার পাতা")}<p class="text-center text-slate-600 py-16">${esc((d && d.error) || NET_MSG)}</p>`); return; }
+  au.profile = d.profile; authBtnUpdate();
+  const pf = d.profile;
+  const stCls = s => s === "অনুমোদিত" ? "bg-emerald-100 text-emerald-800" : s === "বাতিল" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800";
+  exOpen(`${exTop("আমার পাতা")}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0"><p class="font-bold text-lg text-brand-800 truncate">${esc(pf.name || "—")}</p>
+          <p class="text-sm text-slate-500 truncate">${esc(pf.email)}</p>
+          <p class="text-sm text-slate-600 mt-1">📱 ${esc(pf.phone || "—")} &nbsp;•&nbsp; 🎓 ${esc(pf.cls || "—")}</p></div>
+        <button type="button" id="myEdit" class="shrink-0 px-3 py-1.5 rounded-lg border border-slate-300 text-sm">✏ বদলান</button>
+      </div>
+      ${pf.enrolled ? '<p class="mt-3 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✅ আপনি সময় সোপানের ভর্তিকৃত শিক্ষার্থী — সব পেইড পরীক্ষা আপনার জন্য ফ্রি।</p>'
+        : `<p class="mt-3 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">আপনি কোচিংয়ে ভর্তি থাকলে আমাদের জানান (<a class="text-brand-700 underline" href="https://wa.me/${esc(CONFIG.whatsapp)}" target="_blank" rel="noopener">WhatsApp</a>) — আপনার অ্যাকাউন্টে সব পেইড পরীক্ষা ফ্রি করে দেওয়া হবে।</p>`}
+    </div>
+    <h3 class="font-semibold text-brand-800 mt-6 mb-3">📋 আমার পরীক্ষার ফল</h3>
+    ${d.history.length ? d.history.map((h, i) => `<div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-3">
+        <div class="flex items-start justify-between gap-3"><p class="font-semibold leading-snug">${esc(h.title)}</p><p class="shrink-0 font-bold text-brand-800">${bnD(h.score)}<span class="text-slate-400 text-sm">/${bnD(h.total)}</span></p></div>
+        <p class="text-xs text-slate-500 mt-1">🏆 অবস্থান ${bnD(h.rank)}/${bnD(h.of)} &nbsp;•&nbsp; ⏱ ${fmtMS(h.secs)}${h.at ? " &nbsp;•&nbsp; " + esc(fmtDT(h.at)) : ""}</p>
+        <div class="grid grid-cols-2 gap-2 mt-3"><button type="button" data-hb="${i}" class="py-2 rounded-lg border-2 border-brand-700 text-brand-700 text-sm font-semibold">র‍্যাংকিং</button><button type="button" data-hr="${i}" class="py-2 rounded-lg border-2 border-gold-500 text-amber-700 text-sm font-semibold">সঠিক উত্তর</button></div></div>`).join("")
+      : '<p class="text-sm text-slate-500 bg-white border border-slate-100 rounded-xl p-4">এখনো কোনো পরীক্ষা দেননি। সাইন ইন করা অবস্থায় পরীক্ষা দিলে ফল এখানে জমা থাকবে।</p>'}
+    ${d.payments.length ? `<h3 class="font-semibold text-brand-800 mt-6 mb-3">💳 আমার পেমেন্ট</h3>${d.payments.map(p => `<div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center justify-between gap-3">
+        <div class="min-w-0"><p class="font-medium truncate">${esc(p.title)}</p><p class="text-xs text-slate-500">৳${bnD(p.amount)} • ${esc(p.method)}</p></div>
+        <span class="shrink-0 text-xs rounded-full px-3 py-1 font-medium ${stCls(p.status)}">${esc(p.status)}</span></div>`).join("")}` : ""}
+    <button type="button" id="myOut" class="w-full mt-6 py-3 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold">সাইন আউট</button>
+    <div class="h-10"></div>`);
+  $("#myEdit").addEventListener("click", () => exProfileForm(null, false));
+  $("#myOut").addEventListener("click", async () => { try { await au.fb.signOut(); } catch (x) {} exClose(true); });
+  document.querySelectorAll("[data-hb]").forEach(b => b.addEventListener("click", () => { const h = d.history[+b.dataset.hb]; exBoard({ id: h.exam, title: h.title }); }));
+  document.querySelectorAll("[data-hr]").forEach(b => b.addEventListener("click", () => { const h = d.history[+b.dataset.hr]; exReview({ id: h.exam, title: h.title }); }));
+}
+
+/* ----- পেইড পরীক্ষা আনলক (বিকাশ/নগদে পেমেন্ট → আপনি অনুমোদন দিলে খুলে যায়) ----- */
+function exPay(e, msg) {
+  exRequireLogin(() => {
+    const s = ex.settings || {};
+    const methods = []; if (s.bkash) methods.push(["bkash", "বিকাশ", s.bkash]); if (s.nagad) methods.push(["nagad", "নগদ", s.nagad]);
+    const pf = au.profile || {};
+    const wa = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent("আসসালামু আলাইকুম, আমি \"" + e.title + "\" পরীক্ষার পেমেন্ট সম্পর্কে জানতে চাই।")}`;
+    exOpen(`${exTop("পরীক্ষা আনলক করুন")}
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <p class="font-semibold text-brand-800">${esc(e.title)}</p>
+        <p class="text-3xl font-bold text-brand-800 mt-1">৳${bnD(e.fee)}</p>
+        <p class="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-3">কোচিংয়ে ভর্তিকৃত শিক্ষার্থীদের জন্য পেইড পরীক্ষা ফ্রি — পেমেন্ট লাগবে না। ভর্তি থাকলে <a class="underline font-medium" href="${wa}" target="_blank" rel="noopener">WhatsApp-এ জানান</a>।</p>
+        ${methods.length ? `<div class="mt-4 text-sm text-slate-700 space-y-1"><p class="font-medium">এই নম্বরে Send Money করুন:</p>${methods.map(m => `<p>${m[1]} (Personal): <b class="select-all text-base">${esc(m[2])}</b></p>`).join("")}${s.note ? `<p class="text-xs text-slate-500 mt-2">${esc(s.note)}</p>` : ""}</div>
+        <form id="pyForm" class="grid gap-4 mt-5" novalidate>
+          <div><label class="block text-sm font-medium mb-1" for="pyMethod">কোথা থেকে পাঠিয়েছেন *</label><select id="pyMethod" class="${exInput}">${methods.map(m => `<option value="${m[0]}">${m[1]}</option>`).join("")}</select></div>
+          <div><label class="block text-sm font-medium mb-1" for="pySender">যে নম্বর থেকে টাকা পাঠিয়েছেন *</label><input id="pySender" type="tel" inputmode="numeric" maxlength="14" placeholder="01XXXXXXXXX" value="${esc(pf.phone || "")}" class="${exInput}"></div>
+          <div><label class="block text-sm font-medium mb-1" for="pyTrx">TrxID (লেনদেন আইডি) *</label><input id="pyTrx" type="text" maxlength="20" autocapitalize="characters" placeholder="যেমন 8N7A6D5EE4" class="${exInput}"></div>
+          <p id="pyErr" class="${msg ? "" : "hidden "}text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">${esc(msg || "")}</p>
+          <button id="pyGo" type="submit" class="w-full py-3.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-white font-semibold text-lg">পেমেন্টের তথ্য জমা দিন</button>
+          <p class="text-xs text-slate-500">আমরা টাকা পেয়ে মিলিয়ে দেখার পর পরীক্ষা খুলে দেব। ভুল TrxID দিলে আবেদন বাতিল হতে পারে।</p>
+        </form>` : `<p class="mt-4 text-sm text-slate-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3">পেমেন্টের নম্বরের জন্য আমাদের <a class="underline font-medium" href="${wa}" target="_blank" rel="noopener">WhatsApp-এ যোগাযোগ করুন</a>।</p>`}
+      </div>`);
+    const f = $("#pyForm"); if (!f) return;
+    f.addEventListener("submit", async ev => {
+      ev.preventDefault();
+      const method = $("#pyMethod").value, sender = $("#pySender").value.trim(), trx = $("#pyTrx").value.trim();
+      const err = t => { const p = $("#pyErr"); p.textContent = t; p.classList.remove("hidden"); };
+      if (!/^(\+?88)?01[3-9][\d০-৯]{8}$/.test(sender.replace(/[\s-]/g, "").replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d)))) return err("যে নম্বর থেকে টাকা পাঠিয়েছেন সেটি সঠিকভাবে দিন।");
+      if (!/^[A-Za-z0-9]{6,20}$/.test(trx)) return err("TrxID ঠিকমতো লিখুন (ইংরেজি অক্ষর ও সংখ্যা)।");
+      const b = $("#pyGo"); b.disabled = true; b.textContent = "অপেক্ষা করুন…";
+      try {
+        const d = await exApi({ action: "pay", exam: e.id, method, sender, trx });
+        if (!d.ok) { b.disabled = false; b.textContent = "পেমেন্টের তথ্য জমা দিন"; return err(d.error || "জমা নেওয়া যায়নি।"); }
+        try { await exFetchList(); exRender(); } catch (x) {}
+        exOpen(`${exTop("পেমেন্ট জমা হয়েছে")}<div class="text-center py-12"><div class="text-5xl mb-3">✅</div>
+          <p class="font-semibold text-brand-800">ধন্যবাদ! আপনার পেমেন্টের তথ্য জমা হয়েছে।</p>
+          <p class="text-sm text-slate-600 mt-2">টাকা মিলিয়ে দেখার পর পরীক্ষাটি আপনার জন্য খুলে যাবে। দ্রুত খুলতে চাইলে WhatsApp-এ জানান।</p>
+          <a href="${wa}" target="_blank" rel="noopener" class="inline-block mt-5 px-6 py-3 rounded-xl bg-[#25D366] text-white font-semibold">WhatsApp-এ জানান</a></div>`);
+      } catch (x) { b.disabled = false; b.textContent = "পেমেন্টের তথ্য জমা দিন"; err(NET_MSG); }
+    });
+  });
+}
+
+// শুরু: Firebase কনফিগ থাকলে সাইন ইনসহ, নইলে আগের মতো শুধু তালিকা
+if (CONFIG.examApi) {
+  if (CONFIG.firebase && CONFIG.firebase.apiKey) {
+    authInit().then(r => { if (r !== true) exLoad(); });
+    setTimeout(() => { if (!au.ready && !ex.exams.length) exLoad(); }, 5000);
+  } else exLoad();
+}
 
 /* ---------- Extra sections ---------- */
 const WHY = [
