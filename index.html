@@ -80,6 +80,7 @@
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#notices">নোটিশ বোর্ড</a>
       <a class="examNav hidden px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#exams">পরীক্ষা</a>
       <a class="resNav hidden px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#resources">রিসোর্স</a>
+      <a class="rtNav hidden px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#routine">রুটিন</a>
       <a class="px-3 py-2 rounded-lg hover:bg-brand-50 hover:text-brand-700" href="#contact">যোগাযোগ</a>
       <a href="#admission" class="ml-2 px-4 py-2 rounded-lg bg-gold-500 text-white hover:bg-gold-400">ভর্তি</a>
     </nav>
@@ -100,6 +101,7 @@
       <a class="mnav px-3 py-3 rounded-lg hover:bg-brand-50" href="#notices">নোটিশ বোর্ড</a>
       <a class="mnav examNav hidden px-3 py-3 rounded-lg hover:bg-brand-50" href="#exams">পরীক্ষা</a>
       <a class="mnav resNav hidden px-3 py-3 rounded-lg hover:bg-brand-50" href="#resources">রিসোর্স</a>
+      <a class="mnav rtNav hidden px-3 py-3 rounded-lg hover:bg-brand-50" href="#routine">রুটিন</a>
       <a class="mnav px-3 py-3 rounded-lg hover:bg-brand-50" href="#contact">যোগাযোগ</a>
     </div>
   </div>
@@ -282,6 +284,18 @@
     <select id="resSub" aria-label="বিষয়" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white"></select>
   </div>
   <div id="resGrid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+</section>
+<!-- ============ ক্লাস রুটিন (Sheet-এর "রুটিন" ট্যাবে কিছু থাকলে তবেই দেখা যাবে) ============ -->
+<section id="routine" class="hidden bg-white py-14">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="text-center mb-8">
+      <h2 class="text-3xl font-bold text-brand-800">ক্লাস রুটিন</h2>
+      <div class="w-16 h-1 bg-gold-500 rounded mx-auto mt-3"></div>
+      <p class="text-slate-500 mt-3">ব্যাচ অনুযায়ী ক্লাসের দিন, সময় ও শিক্ষক।</p>
+    </div>
+    <div class="max-w-xs mx-auto mb-6"><select id="rtBatch" aria-label="ব্যাচ বা শ্রেণি" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white"></select></div>
+    <div id="rtGrid" class="grid md:grid-cols-2 gap-5"></div>
+  </div>
 </section>
 <div id="examModal" class="hidden fixed inset-0 z-[80] bg-slate-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="অনলাইন পরীক্ষা">
   <div id="examBody" class="max-w-2xl mx-auto px-4 py-5 min-h-full"></div>
@@ -795,7 +809,7 @@ function exLoad() {
   $("#exams").classList.remove("hidden");
   document.querySelectorAll(".examNav").forEach(a => a.classList.remove("hidden"));
   if (!ex.exams.length) grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">পরীক্ষার তালিকা লোড হচ্ছে…</p>';
-  return exFetchList().then(() => { exRender(); resLoad(); }).catch(() => {
+  return exFetchList().then(() => { exRender(); resLoad(); rtLoad(); }).catch(() => {
     if (!ex.exams.length) grid.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-slate-500">এই মুহূর্তে পরীক্ষার তালিকা আনা যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।</p>';
   });
 }
@@ -877,6 +891,7 @@ function exClose(force) {
   if (ex.run && !ex.run.done && !force && !confirm("পরীক্ষা চলছে! এখন বের হলেও টাইমার চলতে থাকবে। একই মোবাইল নম্বর দিয়ে সময় থাকতে আবার ঢুকে চালিয়ে যেতে পারবেন। বের হবেন?")) return;
   clearInterval(ex.tick); ex.run = null; au.then = null;
   $("#examModal").classList.add("hidden");
+  $("#examBody").innerHTML = "";      // ব্যক্তিগত তথ্য (ফি, উপস্থিতি, ফল) পাতায় রেখে যাওয়া হয় না
   document.body.style.overflow = "";
   exLoad();
 }
@@ -1139,7 +1154,7 @@ async function authInit() {
     au.fb = firebase.auth(); au.fb.languageCode = "bn";
     au.fb.onAuthStateChanged(async u => {
       au.user = u; au.ready = true;
-      if (!u) { au.profile = null; cf.n = 0; cf.picked = false; clsSync(); }
+      if (!u) { au.profile = null; cf.n = 0; cf.picked = false; clsSync(); if ($("#examModal").classList.contains("hidden")) $("#examBody").innerHTML = ""; }
       authBtnUpdate();
       await exLoad();
       if (u) { try { const d = await exApi({ action: "me" }); if (d.ok) { au.profile = d.profile; authBtnUpdate(); clsFromProfile(); } } catch (x) {} }
@@ -1219,23 +1234,26 @@ function exProfileForm(then, first, msg) {
       <form id="pfForm" class="grid gap-4" novalidate>
         <div><label class="block text-sm font-medium mb-1" for="pfName">নাম *</label><input id="pfName" type="text" maxlength="60" value="${esc(pf.name || (au.user && au.user.displayName) || "")}" class="${exInput}"></div>
         <div><label class="block text-sm font-medium mb-1" for="pfPhone">মোবাইল নম্বর *</label><input id="pfPhone" type="tel" inputmode="numeric" maxlength="14" placeholder="01XXXXXXXXX" value="${esc(pf.phone || "")}" class="${exInput}"></div>
+        <div><label class="block text-sm font-medium mb-1" for="pfG">অভিভাবকের মোবাইল নম্বর <span class="text-slate-400 font-normal">(ঐচ্ছিক)</span></label><input id="pfG" type="tel" inputmode="numeric" maxlength="14" placeholder="01XXXXXXXXX" value="${esc(pf.gphone || "")}" class="${exInput}"></div>
         <div><label class="block text-sm font-medium mb-1" for="pfCls">শ্রেণি *</label><select id="pfCls" class="${exInput}"><option value="">-- শ্রেণি নির্বাচন করুন --</option>${EXAM_CLASSES.map(c => `<option ${pf.cls === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
         <p id="pfErr" class="${msg ? "" : "hidden "}text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">${esc(msg || "")}</p>
         <button id="pfGo" type="submit" class="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold text-lg">সংরক্ষণ করুন</button>
-        <p class="text-xs text-slate-500">আপনার মোবাইল নম্বর র‍্যাংকিংসহ কোথাও কাউকে দেখানো হয় না।</p>
+        <p class="text-xs text-slate-500">আপনার ও অভিভাবকের নম্বর র‍্যাংকিংসহ কোথাও কাউকে দেখানো হয় না। অভিভাবকের নম্বর শুধু "অভিভাবককে WhatsApp-এ পাঠান" বোতামের জন্য।</p>
       </form></div>`);
   $("#pfForm").addEventListener("submit", async ev => {
     ev.preventDefault();
-    const name = $("#pfName").value.trim(), phone = $("#pfPhone").value.trim(), cls = $("#pfCls").value;
+    const name = $("#pfName").value.trim(), phone = $("#pfPhone").value.trim(), cls = $("#pfCls").value, gphone = $("#pfG").value.trim();
     const err = t => { const p = $("#pfErr"); p.textContent = t; p.classList.remove("hidden"); };
     if (name.length < 2) return err("আপনার নাম লিখুন।");
     if (!/^(\+?88)?01[3-9][\d০-৯]{8}$/.test(phone.replace(/[\s-]/g, "").replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d)))) return err("সঠিক মোবাইল নম্বর দিন (যেমন 01XXXXXXXXX)।");
     if (!cls) return err("শ্রেণি বেছে নিন।");
+    if (gphone && !/^(\+?88)?01[3-9][\d০-৯]{8}$/.test(gphone.replace(/[\s-]/g, "").replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d)))) return err("অভিভাবকের মোবাইল নম্বর ঠিক নেই (যেমন 01XXXXXXXXX), না দিলে ঘরটি ফাঁকা রাখুন।");
     const b = $("#pfGo"); b.disabled = true; b.textContent = "অপেক্ষা করুন…";
     try {
-      const d = await exApi({ action: "profile", name, phone, cls });
+      const d = await exApi({ action: "profile", name, phone, cls, gphone });
       if (!d.ok) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; return err(d.error || "সংরক্ষণ করা যায়নি।"); }
-      au.profile = Object.assign({}, au.profile, { name, phone: phone.replace(/[০-৯]/g, c => "০১২৩৪৫৬৭৮৯".indexOf(c)).replace(/\D/g, "").replace(/^88/, ""), cls });
+      const nz = v => v.replace(/[০-৯]/g, c => "০১২৩৪৫৬৭৮৯".indexOf(c)).replace(/\D/g, "").replace(/^88/, "");
+      au.profile = Object.assign({}, au.profile, { name, phone: nz(phone), cls, gphone: nz(gphone) });
       authBtnUpdate(); clsFromProfile();
       if (then) then(); else exMyPage();
     } catch (x) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; err(NET_MSG); }
@@ -1260,14 +1278,15 @@ async function exMyPage(pre) {
           <p class="text-sm text-slate-600 mt-1">📱 ${esc(pf.phone || "—")} &nbsp;•&nbsp; 🎓 ${esc(pf.cls || "—")}</p></div>
         <button type="button" id="myEdit" class="shrink-0 px-3 py-1.5 rounded-lg border border-slate-300 text-sm">✏ বদলান</button>
       </div>
-      ${pf.enrolled ? '<p class="mt-3 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✅ আপনি সময় সোপানের ভর্তিকৃত শিক্ষার্থী — সব পেইড পরীক্ষা আপনার জন্য ফ্রি।</p>'
+      ${pf.enrolled ? `<p class="mt-3 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✅ আপনি সময় সোপানের ভর্তিকৃত শিক্ষার্থী — সব পেইড পরীক্ষা ও রিসোর্স আপনার জন্য ফ্রি।${pf.roll ? " <b>রোল/আইডি: " + esc(pf.roll) + "</b>" : ""}${pf.batch ? " • ব্যাচ: " + esc(pf.batch) : ""}</p>`
         : `<p class="mt-3 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">আপনি কোচিংয়ে ভর্তি থাকলে আমাদের জানান (<a class="text-brand-700 underline" href="https://wa.me/${esc(CONFIG.whatsapp)}" target="_blank" rel="noopener">WhatsApp</a>) — আপনার অ্যাকাউন্টে সব পেইড পরীক্ষা ফ্রি করে দেওয়া হবে।</p>`}
     </div>
-    <h3 class="font-semibold text-brand-800 mt-6 mb-3">📋 আমার পরীক্ষার ফল</h3>
+    ${pf.enrolled ? '<div id="myPriv"><p class="text-center text-slate-500 text-sm py-8">আপনার ফি, উপস্থিতি ও ফল লোড হচ্ছে…</p></div>' : ""}
+    <h3 class="font-semibold text-brand-800 mt-6 mb-3">📋 আমার অনলাইন পরীক্ষার ফল</h3>
     ${d.history.length ? d.history.map((h, i) => `<div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-3">
         <div class="flex items-start justify-between gap-3"><p class="font-semibold leading-snug">${esc(h.title)}</p><p class="shrink-0 font-bold text-brand-800">${bnD(h.score)}<span class="text-slate-400 text-sm">/${bnD(h.total)}</span></p></div>
         <p class="text-xs text-slate-500 mt-1">🏆 অবস্থান ${bnD(h.rank)}/${bnD(h.of)} &nbsp;•&nbsp; ⏱ ${fmtMS(h.secs)}${h.at ? " &nbsp;•&nbsp; " + esc(fmtDT(h.at)) : ""}</p>
-        <div class="grid grid-cols-2 gap-2 mt-3"><button type="button" data-hb="${i}" class="py-2 rounded-lg border-2 border-brand-700 text-brand-700 text-sm font-semibold">র‍্যাংকিং</button><button type="button" data-hr="${i}" class="py-2 rounded-lg border-2 border-gold-500 text-amber-700 text-sm font-semibold">সঠিক উত্তর</button></div></div>`).join("")
+        <div class="grid grid-cols-2 gap-2 mt-3"><button type="button" data-hb="${i}" class="py-2 rounded-lg border-2 border-brand-700 text-brand-700 text-sm font-semibold">র‍্যাংকিং</button><button type="button" data-hr="${i}" class="py-2 rounded-lg border-2 border-gold-500 text-amber-700 text-sm font-semibold">সঠিক উত্তর</button></div>${waBtn(pf.gphone, `${pf.name || "আমি"}-এর ফল — ${h.title}: ${bnD(h.score)}/${bnD(h.total)} নম্বর, অবস্থান ${bnD(h.rank)}/${bnD(h.of)}। (সময় সোপান)`)}</div>`).join("")
       : '<p class="text-sm text-slate-500 bg-white border border-slate-100 rounded-xl p-4">এখনো কোনো পরীক্ষা দেননি। সাইন ইন করা অবস্থায় পরীক্ষা দিলে ফল এখানে জমা থাকবে।</p>'}
     ${d.payments.length ? `<h3 class="font-semibold text-brand-800 mt-6 mb-3">💳 আমার পেমেন্ট</h3>${d.payments.map(p => `<div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center justify-between gap-3">
         <div class="min-w-0"><p class="font-medium truncate">${esc(p.title)}</p><p class="text-xs text-slate-500">৳${bnD(p.amount)} • ${esc(p.method)}</p></div>
@@ -1278,6 +1297,82 @@ async function exMyPage(pre) {
   $("#myOut").addEventListener("click", async () => { try { await au.fb.signOut(); } catch (x) {} exClose(true); });
   document.querySelectorAll("[data-hb]").forEach(b => b.addEventListener("click", () => { const h = d.history[+b.dataset.hb]; exBoard({ id: h.exam, title: h.title }); }));
   document.querySelectorAll("[data-hr]").forEach(b => b.addEventListener("click", () => { const h = d.history[+b.dataset.hr]; exReview({ id: h.exam, title: h.title }); }));
+  if (pf.enrolled) privLoad(pf);
+}
+
+/* ----- ক্লাস রুটিন (সবার জন্য খোলা) ----- */
+const rt = { items: [], pick: "", touched: false };
+const bkeyOf = s => String(s || "").replace(/[০-৯]/g, c => "০১২৩৪৫৬৭৮৯".indexOf(c)).replace(/\s/g, "").toLowerCase();
+function rtLoad() {
+  return exApi({ action: "routine" }).then(d => { if (!d.ok) throw new Error("bad"); rt.items = d.items || []; rtRender(); }).catch(() => {});
+}
+const placeHtml = t => /^https:\/\//i.test(t) ? `<a class="text-brand-700 underline break-all" href="${esc(t)}" target="_blank" rel="noopener">ক্লাসের লিংক</a>` : esc(t);
+function rtRender() {
+  const sec = $("#routine"), show = rt.items.length > 0;
+  sec.classList.toggle("hidden", !show);
+  document.querySelectorAll(".rtNav").forEach(a => a.classList.toggle("hidden", !show));
+  if (!show) return;
+  const batches = Array.from(new Set(rt.items.map(i => i.batch).filter(Boolean)));
+  if (!rt.touched && !rt.pick && au.profile && au.profile.batch) {
+    const mine = batches.find(b => bkeyOf(b) === bkeyOf(au.profile.batch)); if (mine) rt.pick = mine;
+  }
+  if (rt.pick && !batches.includes(rt.pick)) rt.pick = "";
+  const sel = $("#rtBatch");
+  sel.innerHTML = '<option value="">সব ব্যাচ / শ্রেণি</option>' + batches.map(b => `<option ${b === rt.pick ? "selected" : ""}>${esc(b)}</option>`).join("");
+  sel.onchange = () => { rt.pick = sel.value; rt.touched = true; rtRender(); };
+  const list = rt.items.filter(i => !rt.pick || i.batch === rt.pick || !i.batch);
+  const groups = {}; list.forEach(i => (groups[i.batch || "সব ব্যাচ"] = groups[i.batch || "সব ব্যাচ"] || []).push(i));
+  $("#rtGrid").innerHTML = Object.keys(groups).map(g => `<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <p class="font-bold text-brand-800 mb-3">${esc(g)}</p>
+      ${groups[g].map(i => `<div class="py-2 border-t border-slate-100 first:border-0 text-sm"><div class="flex items-start justify-between gap-3"><p class="font-semibold">${esc(i.subject || "—")}</p><p class="shrink-0 text-slate-600">${esc(i.day)}${i.time ? " • " + esc(i.time) : ""}</p></div>
+        <p class="text-xs text-slate-500 mt-0.5">${[i.teacher ? esc(i.teacher) : "", i.place ? placeHtml(i.place) : ""].filter(Boolean).join(" • ")}</p></div>`).join("")}</div>`).join("");
+}
+
+/* ----- ভর্তিকৃত শিক্ষার্থীর ব্যক্তিগত তথ্য: ফি, উপস্থিতি, অফলাইন ফল ----- */
+// অভিভাবকের নম্বরে WhatsApp বার্তা (বার্তাটি শিক্ষার্থী নিজেই পাঠায়)
+function waBtn(gphone, text) {
+  if (!gphone) return "";
+  return `<a class="mt-3 flex items-center justify-center gap-2 py-2 rounded-lg bg-[#25D366] text-white text-sm font-semibold" href="https://wa.me/88${esc(gphone)}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">অভিভাবককে WhatsApp-এ পাঠান</a>`;
+}
+const fmtDay = iso => bnD(iso.slice(8, 10)) + "/" + bnD(iso.slice(5, 7));
+async function privLoad(pf) {
+  const box = $("#myPriv"); if (!box) return;
+  let d;
+  try { d = await exApi({ action: "private" }); } catch (x) { d = null; }
+  const again = $("#myPriv"); if (!again) return;            // ইতিমধ্যে পাতা বদলে গেলে কিছু করা হবে না
+  if (!d || !d.ok) { again.innerHTML = `<p class="text-center text-sm text-slate-600 bg-white border border-slate-100 rounded-xl p-4">${esc((d && d.error) || NET_MSG)}</p>`; return; }
+  if (!d.eligible) {
+    const why = { noroll: "আপনার রোল/আইডি এখনো দেওয়া হয়নি। ফি, উপস্থিতি ও অফলাইন ফল দেখতে কোচিংয়ে যোগাযোগ করুন।", dup: "আপনার রোল/আইডি নিয়ে একটি সমস্যা আছে, তাই এখন তথ্য দেখানো যাচ্ছে না। কোচিংয়ে যোগাযোগ করুন।" }[d.reason] || "আপনার ব্যক্তিগত তথ্য এখনো চালু হয়নি। কোচিংয়ে যোগাযোগ করুন।";
+    again.innerHTML = `<p class="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl p-4">${esc(why)} (<a class="underline" href="https://wa.me/${esc(CONFIG.whatsapp)}" target="_blank" rel="noopener">WhatsApp</a>)</p>`; return;
+  }
+  const g = d.gphone || pf.gphone || "", nm = d.name || pf.name || "আমি";
+  const f = d.fees, a = d.att;
+  const bal = f.balance > 0 ? `<span class="text-red-700">বকেয়া ৳${bnD(f.balance)}</span>` : f.balance < 0 ? `<span class="text-emerald-700">অগ্রিম ৳${bnD(-f.balance)}</span>` : '<span class="text-emerald-700">বকেয়া নেই ✅</span>';
+  const feeText = `${nm}-এর ফি: মোট ধার্য ৳${bnD(f.due)}, জমা ৳${bnD(f.paid)}, ` + (f.balance > 0 ? `বকেয়া ৳${bnD(f.balance)}` : f.balance < 0 ? `অগ্রিম ৳${bnD(-f.balance)}` : "বকেয়া নেই") + "। (সময় সোপান)";
+  const attText = a.total ? `${nm}-এর উপস্থিতি: ${bnD(a.total)}টি ক্লাসে ${bnD(a.present)}টি উপস্থিত, ${bnD(a.absent)}টি অনুপস্থিত (${bnD(a.pct)}%)। (সময় সোপান)` : "";
+  const myRt = rt.items.filter(i => !i.bkey || i.bkey === d.bkey);
+  again.innerHTML = `
+    <h3 class="font-semibold text-brand-800 mt-6 mb-3">🧾 আমার ফি ও বকেয়া</h3>
+    <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-3">
+      <div class="flex items-center justify-between gap-3"><p class="font-bold text-lg">${bal}</p><p class="text-xs text-slate-500 text-right">ধার্য ৳${bnD(f.due)} • জমা ৳${bnD(f.paid)}</p></div>
+      ${f.rows.length ? f.rows.map(r => `<div class="flex items-start justify-between gap-3 py-2 border-t border-slate-100 text-sm"><div class="min-w-0"><p class="font-medium">${esc(r.month || "—")}</p>${r.note ? `<p class="text-xs text-slate-500">${esc(r.note)}</p>` : ""}</div><div class="shrink-0 text-right"><p>জমা ৳${bnD(r.paid)}<span class="text-slate-400"> / ৳${bnD(r.due)}</span></p>${r.date ? `<p class="text-xs text-slate-400">${bnD(r.date.slice(8, 10) + "/" + r.date.slice(5, 7) + "/" + r.date.slice(0, 4))}</p>` : ""}</div></div>`).join("") : '<p class="text-sm text-slate-500 mt-2">এখনো কোনো ফি-র হিসাব যোগ হয়নি।</p>'}
+      ${f.rows.length ? waBtn(g, feeText) : ""}
+    </div>
+    <h3 class="font-semibold text-brand-800 mt-6 mb-3">📅 আমার উপস্থিতি</h3>
+    <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-3">
+      ${a.total ? `<div class="flex items-center justify-between gap-3"><p class="font-bold text-lg ${a.pct >= 75 ? "text-emerald-700" : "text-amber-700"}">${bnD(a.pct)}% উপস্থিতি</p><p class="text-xs text-slate-500 text-right">${bnD(a.total)}টি ক্লাস • উপস্থিত ${bnD(a.present)} • অনুপস্থিত ${bnD(a.absent)}</p></div>
+      ${a.months.map(m => `<div class="py-2 border-t border-slate-100 text-sm"><div class="flex items-center justify-between gap-3"><p class="font-medium">${esc(bnD(m.label))}</p><p class="text-slate-600">${bnD(m.present)}/${bnD(m.total)}</p></div>${m.absentDays.length ? `<p class="text-xs text-red-700 mt-0.5">অনুপস্থিত: ${m.absentDays.map(fmtDay).join(", ")}</p>` : ""}</div>`).join("")}
+      ${waBtn(g, attText)}` : '<p class="text-sm text-slate-500">এখনো উপস্থিতির হিসাব যোগ হয়নি।</p>'}
+    </div>
+    <h3 class="font-semibold text-brand-800 mt-6 mb-3">📝 অফলাইন পরীক্ষার ফল</h3>
+    ${d.results.length ? d.results.map(r => `<div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-3">
+        <div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="font-semibold leading-snug">${esc(r.exam)}</p><p class="text-xs text-slate-500">${esc(r.subject)}${r.date ? " • " + bnD(r.date.slice(8, 10) + "/" + r.date.slice(5, 7) + "/" + r.date.slice(0, 4)) : ""}</p></div>
+          <p class="shrink-0 font-bold text-brand-800">${r.got == null ? "—" : bnD(r.got)}<span class="text-slate-400 text-sm">/${bnD(r.total)}</span></p></div>
+        ${r.rank ? `<p class="text-xs text-slate-500 mt-1">🏆 মেধাক্রম ${esc(bnD(r.rank))}</p>` : ""}${r.note ? `<p class="text-sm text-slate-600 mt-1">${esc(r.note)}</p>` : ""}
+        ${waBtn(g, `${nm}-এর ফল — ${r.exam}${r.subject ? " (" + r.subject + ")" : ""}: ${r.got == null ? "—" : bnD(r.got)}/${bnD(r.total)} নম্বর${r.rank ? ", মেধাক্রম " + bnD(r.rank) : ""}। (সময় সোপান)`)}
+      </div>`).join("") : '<p class="text-sm text-slate-500 bg-white border border-slate-100 rounded-xl p-4">এখনো কোনো অফলাইন পরীক্ষার ফল প্রকাশ করা হয়নি।</p>'}
+    ${myRt.length ? `<h3 class="font-semibold text-brand-800 mt-6 mb-3">🕒 আমার ব্যাচের রুটিন${d.batch ? " — " + esc(d.batch) : ""}</h3><div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-3">${myRt.map(i => `<div class="py-2 border-t border-slate-100 first:border-0 text-sm"><div class="flex items-start justify-between gap-3"><p class="font-semibold">${esc(i.subject || "—")}</p><p class="shrink-0 text-slate-600">${esc(i.day)}${i.time ? " • " + esc(i.time) : ""}</p></div><p class="text-xs text-slate-500">${[i.teacher ? esc(i.teacher) : "", i.place ? placeHtml(i.place) : ""].filter(Boolean).join(" • ")}</p></div>`).join("")}</div>` : ""}
+    ${g ? "" : '<p class="text-xs text-slate-500 mb-3">অভিভাবকের মোবাইল নম্বর প্রোফাইলে (✏ বদলান) দিলে এখানে "অভিভাবককে WhatsApp-এ পাঠান" বোতাম আসবে।</p>'}`;
 }
 
 /* ----- পেইড পরীক্ষা আনলক (বিকাশ/নগদে পেমেন্ট → আপনি অনুমোদন দিলে খুলে যায়) ----- */
