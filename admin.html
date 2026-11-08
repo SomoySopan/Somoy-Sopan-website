@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1b2aa6">
+<title>অ্যাডমিন | সময় সোপান</title>
+<link rel="manifest" href="admin.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="সোপান অ্যাডমিন">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['"Hind Siliguri"', 'system-ui', 'sans-serif'] },
+        colors: {
+          brand: { 50:'#eef1fd', 100:'#dde3fa', 500:'#3a4fd0', 600:'#2a3bbd', 700:'#1b2aa6', 800:'#141f85', 900:'#0c1458' },
+          gold: { 400:'#f9cf3d', 500:'#f0b000' }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { background:#f4f6fb; -webkit-tap-highlight-color: transparent; }
+  .safe-b { padding-bottom: env(safe-area-inset-bottom); }
+  input, select, textarea { font-size: 16px; }
+</style>
+</head>
+<body class="font-sans text-slate-800 antialiased">
+
+<!-- সাইন ইন / অনুমতি -->
+<div id="gate" class="min-h-screen grid place-items-center px-4">
+  <div class="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center">
+    <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-700 text-white grid place-items-center text-2xl">🛠</div>
+    <h1 class="font-bold text-xl text-brand-800 mt-3">সময় সোপান — অ্যাডমিন</h1>
+    <p id="gateMsg" class="text-sm text-slate-600 mt-2">লোড হচ্ছে…</p>
+    <button id="gIn" type="button" class="hidden mt-5 w-full py-3 rounded-xl border border-slate-300 bg-white font-semibold">Google দিয়ে সাইন ইন</button>
+    <button id="gOut" type="button" class="hidden mt-3 w-full py-3 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold">সাইন আউট</button>
+  </div>
+</div>
+
+<!-- অ্যাপ -->
+<div id="app" class="hidden">
+  <header class="sticky top-0 z-20 bg-brand-800 text-white" style="padding-top:env(safe-area-inset-top)">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div class="min-w-0"><p class="font-bold leading-tight">সময় সোপান <span class="text-gold-400">অ্যাডমিন</span></p><p id="who" class="text-xs text-brand-100 truncate"></p></div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="refresh" type="button" aria-label="রিফ্রেশ" class="px-3 py-1.5 rounded-lg bg-white/10 text-sm">↻</button>
+        <button id="out" type="button" class="px-3 py-1.5 rounded-lg bg-white/10 text-sm">বের হন</button>
+      </div>
+    </div>
+  </header>
+  <main id="view" class="max-w-2xl mx-auto px-4 pt-4 pb-28"></main>
+  <nav id="tabs" class="fixed bottom-0 inset-x-0 z-20 bg-white border-t border-slate-200 safe-b"><div class="max-w-2xl mx-auto grid grid-cols-6"></div></nav>
+</div>
+
+<div id="sheet" class="hidden fixed inset-0 z-40 bg-black/40 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
+  <div class="bg-white w-full max-w-xl rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 safe-b"><div id="sheetBody"></div></div>
+</div>
+<div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-50 max-w-[90vw] px-4 py-2.5 rounded-xl text-sm text-white shadow-lg"></div>
+
+<script>
+/* ===================== কনফিগ (সাইটের মতোই) ===================== */
+const CONFIG = {
+  examApi: "https://script.google.com/macros/s/AKfycbygvtuaN4ctf8HcwyvyLULehdGXUq89w2_xurWhcv3JzTnjevFZUtrr1XDlJKMWHTTw/exec",
+  firebase: {
+    apiKey: "AIzaSyBLomnbyJxvcOHnnM6vnZ7DRkVAcJKK60c",
+    authDomain: "somoy-sopan-website.firebaseapp.com",
+    projectId: "somoy-sopan-website",
+    storageBucket: "somoy-sopan-website.firebasestorage.app",
+    messagingSenderId: "266843031404",
+    appId: "1:266843031404:web:b6cfa07f2f36baf2101549",
+    measurementId: "G-JMQBJ06D5Q"
+  }
+};
+
+/* ===================== হেল্পার ===================== */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const bn = s => String(s).replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[d]);
+const money = n => "৳" + bn(Math.round(Number(n) || 0).toLocaleString("en-US"));
+const MONTHS = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"];
+const curMonth = () => { const d = new Date(); return MONTHS[d.getMonth()] + " " + bn(d.getFullYear()); };
+const todayISO = () => { const d = new Date(Date.now() + 6 * 3600e3); return d.toISOString().slice(0, 10); };
+const waLink = (phone, text) => `https://wa.me/88${String(phone).replace(/\D/g, "")}${text ? "?text=" + encodeURIComponent(text) : ""}`;
+const inp = "w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500";
+const btnP = "px-4 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold disabled:opacity-50";
+const btnS = "px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-medium";
+let toastT;
+function toast(msg, bad) {
+  const t = $("#toast"); t.textContent = msg; t.className = "fixed left-1/2 -translate-x-1/2 bottom-24 z-50 max-w-[90vw] px-4 py-2.5 rounded-xl text-sm text-white shadow-lg " + (bad ? "bg-red-700" : "bg-slate-800");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3200);
+}
+function sheet(html) { $("#sheetBody").innerHTML = html; $("#sheet").classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+function sheetClose() { $("#sheet").classList.add("hidden"); $("#sheetBody").innerHTML = ""; document.body.style.overflow = ""; }
+$("#sheet").addEventListener("click", e => { if (e.target.id === "sheet") sheetClose(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") sheetClose(); });
+const loading = () => '<p class="text-center text-slate-500 py-16">লোড হচ্ছে…</p>';
+const card = (inner, cls = "") => `<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4 ${cls}">${inner}</div>`;
+const h3 = t => `<h3 class="font-semibold text-brand-800 mb-3">${t}</h3>`;
+
+/* ===================== API ===================== */
+let user = null, fb = null, S = { ov: null, students: null, nextRoll: "SS-001", tab: "home" };
+async function api(params) {
+  const u = new URL(CONFIG.examApi);
+  if (user) { try { params.idt = await user.getIdToken(); } catch (e) {} }
+  Object.keys(params).forEach(k => u.searchParams.set(k, params[k]));
+  u.searchParams.set("_", Date.now());
+  let d;
+  try { const r = await fetch(u.toString(), { cache: "no-store" }); d = await r.json(); } catch (e) { return { ok: false, error: "ইন্টারনেট সংযোগে সমস্যা। আবার চেষ্টা করুন।", code: "net" }; }
+  if (d && d.code === "auth" && fb) fb.signOut().catch(() => {});
+  if (d && d.code === "forbidden") gate("denied");
+  return d;
+}
+
+/* ===================== সাইন ইন ===================== */
+function gate(mode) {
+  $("#app").classList.add("hidden"); $("#gate").classList.remove("hidden"); sheetClose();
+  const msg = $("#gateMsg"), gi = $("#gIn"), go = $("#gOut");
+  gi.classList.add("hidden"); go.classList.add("hidden");
+  if (mode === "in") { msg.textContent = "মালিকের Google অ্যাকাউন্ট দিয়ে সাইন ইন করুন।"; gi.classList.remove("hidden"); }
+  else if (mode === "denied") { msg.innerHTML = "এই অংশ শুধু কোচিংয়ের মালিকের জন্য।<br><span class='text-xs text-slate-500'>" + esc((user && user.email) || "") + "</span>"; go.classList.remove("hidden"); }
+  else if (mode === "fail") { msg.textContent = "সাইন ইন ব্যবস্থা চালু করা যায়নি। ইন্টারনেট দেখে পাতাটি রিফ্রেশ করুন।"; }
+  else msg.textContent = "লোড হচ্ছে…";
+}
+function loadScript(src) { return new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); }
+async function init() {
+  gate("load");
+  try {
+    const v = "10.12.2";
+    await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-app-compat.js`);
+    await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-auth-compat.js`);
+    firebase.initializeApp(CONFIG.firebase);
+    fb = firebase.auth(); fb.languageCode = "bn";
+  } catch (e) { return gate("fail"); }
+  fb.onAuthStateChanged(async u => {
+    user = u;
+    if (!u) { S = { ov: null, students: null, nextRoll: "SS-001", tab: "home" }; return gate("in"); }
+    $("#gateMsg").textContent = "যাচাই করা হচ্ছে…";
+    const d = await api({ action: "a_overview" });
+    if (!d.ok) { if (d.code === "forbidden") return gate("denied"); $("#gateMsg").textContent = d.error || "লোড করা যায়নি।"; $("#gOut").classList.remove("hidden"); return; }
+    S.ov = d; $("#who").textContent = u.email; $("#gate").classList.add("hidden"); $("#app").classList.remove("hidden");
+    go(S.tab || "home");
+  });
+}
+$("#gIn").addEventListener("click", async () => {
+  try { await fb.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  catch (e) { toast(e && e.code === "auth/popup-closed-by-user" ? "সাইন ইন বাতিল হয়েছে।" : "সাইন ইন করা যায়নি। ফেসবুক/মেসেঞ্জারের ভেতরের ব্রাউজারে না খুলে Chrome-এ খুলুন।", true); }
+});
+const signOut = async () => { try { await fb.signOut(); } catch (e) {} };
+$("#gOut").addEventListener("click", signOut); $("#out").addEventListener("click", signOut);
+$("#refresh").addEventListener("click", async () => { S.students = null; const d = await api({ action: "a_overview" }); if (d.ok) S.ov = d; go(S.tab); });
+
+/* ===================== ট্যাব ===================== */
+const TABS = [["home", "🏠", "হোম"], ["stu", "👥", "শিক্ষার্থী"], ["fee", "💰", "ফি"], ["att", "📅", "উপস্থিতি"], ["mark", "📝", "নম্বর"], ["pay", "💳", "পেমেন্ট"]];
+function go(tab, arg) {
+  S.tab = tab; sheetClose();
+  $("#tabs > div").innerHTML = TABS.map(t => `<button type="button" data-tab="${t[0]}" class="py-2 text-center ${t[0] === tab ? "text-brand-700 font-bold" : "text-slate-500"}"><span class="block text-xl leading-none">${t[1]}</span><span class="block text-[11px] mt-0.5">${t[2]}${t[0] === "pay" && S.ov && S.ov.pendingPay ? ` <b class="text-red-600">${bn(S.ov.pendingPay)}</b>` : ""}</span></button>`).join("");
+  $("#view").innerHTML = loading(); window.scrollTo(0, 0);
+  ({ home: vHome, stu: vStudents, fee: vFees, att: vAtt, mark: vMarks, pay: vPay })[tab](arg);
+}
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) go(b.dataset.tab); });
+const failView = d => { $("#view").innerHTML = card(`<p class="text-red-700 text-sm">${esc((d && d.error) || "লোড করা যায়নি।")}</p><button type="button" class="${btnS} mt-3" onclick="go(S.tab)">আবার চেষ্টা</button>`); };
+async function students() {
+  if (S.students) return S.students;
+  const d = await api({ action: "a_students" });
+  if (!d.ok) return null;
+  S.students = d.list; S.nextRoll = d.nextRoll; return d.list;
+}
+
+/* ===================== হোম ===================== */
+async function vHome() {
+  const d = await api({ action: "a_overview" });
+  if (!d.ok) return failView(d);
+  S.ov = d;
+  const stat = (n, label, tone, tab, arg) => `<button type="button" data-go="${tab}" data-arg="${arg || ""}" class="text-left rounded-2xl border p-4 ${tone}"><p class="text-3xl font-bold">${n}</p><p class="text-sm mt-0.5">${label}</p></button>`;
+  const warns = [];
+  if (d.dupRolls) warns.push(`❌ ${bn(d.dupRolls)}টি রোল একাধিক জনের — শিক্ষার্থী পাতায় ঠিক করুন।`);
+  if (d.enrolledNoRoll) warns.push(`⚠ ${bn(d.enrolledNoRoll)} জন ভর্তিকৃতের রোল নেই।`);
+  $("#view").innerHTML = `
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      ${stat(bn(d.enrolled), "ভর্তিকৃত শিক্ষার্থী", "bg-white border-slate-100", "stu", "enrolled")}
+      ${stat(bn(d.newSignups), "নতুন সাইন আপ (অনুমোদন বাকি)", d.newSignups ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-white border-slate-100", "stu", "new")}
+      ${stat(money(d.dueTotal), `মোট বকেয়া (${bn(d.owing)} জন)`, d.owing ? "bg-red-50 border-red-200 text-red-800" : "bg-white border-slate-100", "fee")}
+      ${stat(bn(d.pendingPay), "অপেক্ষমাণ পেমেন্ট", d.pendingPay ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-white border-slate-100", "pay")}
+    </div>
+    ${warns.length ? card(warns.map(w => `<p class="text-sm">${w}</p>`).join(""), "border-red-200") : ""}
+    ${card(`${h3("আজকের কাজ")}<div class="grid grid-cols-2 gap-2">
+      <button type="button" data-go="att" class="${btnP}">📅 আজকের উপস্থিতি</button>
+      <button type="button" data-go="fee" class="${btnP}">💰 ফি জমা নিন</button></div>`)}
+    ${card(`${h3("ব্যাচ")}${d.batches.length ? d.batches.map(b => `<div class="flex justify-between py-1.5 border-t border-slate-100 first:border-0 text-sm"><span>${esc(b.name)}</span><b>${bn(b.count)} জন</b></div>`).join("") : '<p class="text-sm text-slate-500">কোনো ব্যাচ নেই। শিক্ষার্থী পাতায় ব্যাচ লিখে ভর্তিকৃত করুন।</p>'}`)}
+    <p class="text-center text-xs text-slate-400">মোট সাইন আপ: ${bn(d.total)} জন</p>`;
+}
+$("#view").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) go(b.dataset.go, b.dataset.arg || undefined); });
+
+/* ===================== শিক্ষার্থী ===================== */
+let stuFilter = "all", stuQ = "";
+async function vStudents(arg) {
+  if (arg) stuFilter = arg;
+  const list = await students();
+  if (!list) return failView({ error: "শিক্ষার্থীর তালিকা আনা যায়নি।" });
+  $("#view").innerHTML = `
+    <input id="sq" type="search" placeholder="নাম, মোবাইল, রোল বা ইমেইল খুঁজুন" value="${esc(stuQ)}" class="${inp} mb-3">
+    <div id="sf" class="flex gap-2 mb-3 text-sm overflow-x-auto">${[["all", "সব"], ["new", "নতুন (অনুমোদন বাকি)"], ["enrolled", "ভর্তিকৃত"]].map(f => `<button type="button" data-f="${f[0]}" class="shrink-0 px-3 py-1.5 rounded-full border ${stuFilter === f[0] ? "bg-brand-700 text-white border-brand-700" : "bg-white border-slate-300"}">${f[1]}</button>`).join("")}</div>
+    <div id="sl"></div>`;
+  const draw = () => {
+    const q = stuQ.trim().toLowerCase();
+    const rows = list.filter(s => (stuFilter === "all" || (stuFilter === "new" ? !s.enrolled : s.enrolled)) && (!q || [s.name, s.phone, s.roll, s.email, s.gphone].join(" ").toLowerCase().includes(q)))
+      .sort((a, b) => (a.enrolled - b.enrolled) || (b.at - a.at));
+    $("#sl").innerHTML = rows.length ? rows.map(s => `<button type="button" data-u="${esc(s.uid)}" class="w-full text-left bg-white rounded-xl border ${s.dup ? "border-red-300" : "border-slate-100"} shadow-sm p-3 mb-2">
+        <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="font-semibold truncate">${esc(s.name || "—")}</p><p class="text-xs text-slate-500 truncate">${esc(s.cls || "—")} • ${esc(s.phone || "মোবাইল নেই")}</p></div>
+        <span class="shrink-0 text-xs rounded-full px-2.5 py-1 ${s.enrolled ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}">${s.enrolled ? esc(s.roll || "রোল নেই") : "নতুন"}</span></div>
+        ${s.enrolled ? `<p class="text-xs text-slate-500 mt-1">${esc(s.batch || "ব্যাচ নেই")}${s.balance > 0 ? ` • <b class="text-red-700">বকেয়া ${money(s.balance)}</b>` : ""}${s.dup ? ' • <b class="text-red-700">ডুপ্লিকেট রোল!</b>' : ""}</p>` : ""}
+      </button>`).join("") : '<p class="text-center text-slate-500 py-10">কেউ নেই।</p>';
+  };
+  draw();
+  $("#sq").addEventListener("input", e => { stuQ = e.target.value; draw(); });
+  $("#sf").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (b) { stuFilter = b.dataset.f; vStudents(); } });
+  $("#sl").addEventListener("click", e => { const b = e.target.closest("[data-u]"); if (b) stuEdit(b.dataset.u); });
+}
+function stuEdit(uid) {
+  const s = S.students.find(x => x.uid === uid); if (!s) return;
+  const batches = Array.from(new Set(S.students.map(x => x.batch).filter(Boolean)));
+  sheet(`<div class="flex items-start justify-between gap-3 mb-3"><div class="min-w-0"><p class="font-bold text-lg text-brand-800 truncate">${esc(s.name || "—")}</p><p class="text-xs text-slate-500 break-all">${esc(s.email)}</p></div><button type="button" class="${btnS}" onclick="sheetClose()">✕</button></div>
+    <div class="text-sm text-slate-600 grid gap-1 mb-4">
+      <p>🎓 ${esc(s.cls || "—")} &nbsp;•&nbsp; 📱 ${s.phone ? `<a class="text-brand-700 underline" href="tel:${esc(s.phone)}">${esc(s.phone)}</a> <a class="text-emerald-700 underline" target="_blank" rel="noopener" href="${waLink(s.phone)}">WhatsApp</a>` : "—"}</p>
+      <p>👪 অভিভাবক: ${s.gphone ? `<a class="text-brand-700 underline" href="tel:${esc(s.gphone)}">${esc(s.gphone)}</a> <a class="text-emerald-700 underline" target="_blank" rel="noopener" href="${waLink(s.gphone)}">WhatsApp</a>` : "দেননি"}</p>
+    </div>
+    <form id="sf2" class="grid gap-3" novalidate>
+      <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200"><input id="fEn" type="checkbox" class="w-5 h-5" ${s.enrolled ? "checked" : ""}><span class="font-semibold">কোচিংয়ে ভর্তিকৃত</span></label>
+      <div><label class="block text-sm font-medium mb-1" for="fRoll">রোল / আইডি (ফাঁকা ছাড়া)</label><input id="fRoll" class="${inp}" maxlength="40" autocapitalize="characters" value="${esc(s.roll)}" placeholder="${esc(S.nextRoll)}"></div>
+      <div><label class="block text-sm font-medium mb-1" for="fBatch">ব্যাচ</label><input id="fBatch" list="bl" class="${inp}" maxlength="60" value="${esc(s.batch)}" placeholder="যেমন নবম-দশম, একাদশ-দ্বাদশ"><datalist id="bl">${batches.map(b => `<option value="${esc(b)}">`).join("")}</datalist></div>
+      <div><label class="block text-sm font-medium mb-1" for="fSince">ভর্তির তারিখ (ঐচ্ছিক)</label><input id="fSince" type="date" class="${inp}" value="${esc(s.since)}"><p class="text-xs text-slate-500 mt-1">এর আগের ক্লাস উপস্থিতিতে গোনা হবে না।</p></div>
+      <p id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
+      <button id="fGo" type="submit" class="${btnP}">সংরক্ষণ করুন</button>
+      <p class="text-xs text-slate-500">রোল দিলে এই শিক্ষার্থী সাইন ইন করে নিজের ফি, উপস্থিতি ও ফল দেখতে পাবে — আগে ফোন করে নিশ্চিত হয়ে নিন এটি সত্যিই সেই শিক্ষার্থী।</p>
+    </form>`);
+  $("#fEn").addEventListener("change", e => { if (e.target.checked && !$("#fRoll").value.trim()) $("#fRoll").value = S.nextRoll; });
+  $("#sf2").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const b = $("#fGo"); b.disabled = true; b.textContent = "সংরক্ষণ হচ্ছে…";
+    const d = await api({ action: "a_student_save", uid, enrolled: $("#fEn").checked ? "হ্যাঁ" : "না", roll: $("#fRoll").value, batch: $("#fBatch").value, since: $("#fSince").value });
+    if (!d.ok) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; const e = $("#fErr"); e.textContent = d.error || "সংরক্ষণ হয়নি।"; e.classList.remove("hidden"); return; }
+    toast("সংরক্ষণ হয়েছে ✅"); S.students = null; const o = await api({ action: "a_overview" }); if (o.ok) S.ov = o; sheetClose(); vStudents();
+  });
+}
+
+/* ===================== ফি ===================== */
+async function vFees() {
+  const [list, dues] = await Promise.all([students(), api({ action: "a_dues" })]);
+  if (!list || !dues.ok) return failView(dues);
+  const batches = Array.from(new Set(list.filter(s => s.enrolled).map(s => s.batch).filter(Boolean)));
+  $("#view").innerHTML = `
+    ${card(`${h3("🔎 শিক্ষার্থীর ফি-হিসাব")}<input id="fq" type="search" placeholder="নাম বা রোল লিখুন" class="${inp}"><div id="fr" class="mt-2"></div>`)}
+    ${card(`${h3("🗓 মাসের ফি ধার্য করুন")}<form id="chg" class="grid gap-3" novalidate>
+      <select id="cB" class="${inp}"><option value="">সব ভর্তিকৃত</option>${batches.map(b => `<option>${esc(b)}</option>`).join("")}</select>
+      <div class="grid grid-cols-2 gap-3"><input id="cM" class="${inp}" value="${esc(curMonth())}" aria-label="মাস"><input id="cD" type="number" inputmode="numeric" min="1" class="${inp}" placeholder="ধার্য ৳" aria-label="ধার্য ফি"></div>
+      <button class="${btnP}" type="submit">ধার্য করুন</button><p class="text-xs text-slate-500">যার ওই মাসের ধার্য আগেই আছে তাকে বাদ দেওয়া হয় — দুবার ধরা হয় না।</p></form>`)}
+    ${card(`${h3(`⚠ বকেয়ার তালিকা (${bn(dues.list.length)} জন)`)}${dues.list.length ? dues.list.map((x, i) => `<div class="flex items-center justify-between gap-2 py-2 border-t border-slate-100 first:border-0">
+        <button type="button" data-roll="${esc(x.roll)}" class="text-left min-w-0"><p class="font-medium truncate">${esc(x.name)} <span class="text-xs text-slate-500">${esc(x.roll)}</span></p><p class="text-xs text-slate-500">${esc(x.batch || "")}</p></button>
+        <div class="shrink-0 text-right"><p class="font-bold text-red-700">${money(x.balance)}</p><a class="text-xs text-emerald-700 underline" target="_blank" rel="noopener" href="${waLink(x.gphone || x.phone, `আসসালামু আলাইকুম। ${x.name}-এর (রোল ${x.roll}) ফি বাবদ ${money(x.balance)} বকেয়া আছে। অনুগ্রহ করে পরিশোধ করুন। — সময় সোপান`)}">WhatsApp তাগাদা</a></div></div>`).join("") : '<p class="text-sm text-emerald-700">কারও বকেয়া নেই 🎉</p>'}`)}`;
+  const enrolled = list.filter(s => s.enrolled && s.roll);
+  $("#fq").addEventListener("input", e => {
+    const q = e.target.value.trim().toLowerCase();
+    $("#fr").innerHTML = q ? enrolled.filter(s => (s.name + " " + s.roll).toLowerCase().includes(q)).slice(0, 8).map(s => `<button type="button" data-roll="${esc(s.roll)}" class="w-full text-left py-2 border-t border-slate-100 first:border-0"><b>${esc(s.name)}</b> <span class="text-xs text-slate-500">${esc(s.roll)} • ${esc(s.batch)}</span></button>`).join("") || '<p class="text-sm text-slate-500 py-2">কেউ নেই।</p>' : "";
+  });
+  $("#view").onclick = e => { const b = e.target.closest("[data-roll]"); if (b) ledger(b.dataset.roll); const g = e.target.closest("[data-go]"); if (g) go(g.dataset.go, g.dataset.arg || undefined); };
+  $("#chg").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const due = $("#cD").value, month = $("#cM").value.trim(), batch = $("#cB").value;
+    if (!month || !(Number(due) > 0)) return toast("মাস ও ধার্য ফি দিন।", true);
+    if (!confirm(`${batch || "সব ভর্তিকৃত"}-এর প্রত্যেকের জন্য ${month} মাসে ${money(due)} ধার্য করবেন?`)) return;
+    const d = await api({ action: "a_fee_charge", batch, month, due });
+    if (!d.ok) return toast(d.error || "হয়নি।", true);
+    toast(`${bn(d.added)} জনের জন্য ধার্য হলো` + (d.skipped ? `, ${bn(d.skipped)} জনের আগেই ছিল` : "")); S.students = null; vFees();
+  });
+}
+async function ledger(roll) {
+  sheet(loading());
+  const d = await api({ action: "a_fees", roll });
+  if (!d.ok) { sheetClose(); return toast(d.error || "খোলা যায়নি।", true); }
+  const st = d.student, l = d.ledger;
+  const paint = l => `<div class="flex items-center justify-between mb-2"><p class="font-bold text-lg ${l.balance > 0 ? "text-red-700" : "text-emerald-700"}">${l.balance > 0 ? "বকেয়া " + money(l.balance) : l.balance < 0 ? "অগ্রিম " + money(-l.balance) : "বকেয়া নেই ✅"}</p><p class="text-xs text-slate-500">ধার্য ${money(l.due)} • জমা ${money(l.paid)}</p></div>
+    ${l.rows.length ? l.rows.map(r => `<div class="flex items-start justify-between gap-2 py-2 border-t border-slate-100 text-sm"><div class="min-w-0"><p class="font-medium">${esc(r.month)}</p><p class="text-xs text-slate-500">${esc(r.note)}${r.date ? " • " + bn(r.date) : ""}</p></div><div class="shrink-0 text-right"><p>জমা ${money(r.paid)} <span class="text-slate-400">/ ${money(r.due)}</span></p><button type="button" data-del="${r.row}" data-m="${esc(r.month)}" class="text-xs text-red-600 underline">মুছুন</button></div></div>`).join("") : '<p class="text-sm text-slate-500">এখনো কিছু নেই।</p>'}`;
+  sheet(`<div class="flex items-start justify-between gap-3 mb-3"><div class="min-w-0"><p class="font-bold text-lg text-brand-800 truncate">${esc(st.name)}</p><p class="text-xs text-slate-500">রোল ${esc(st.roll)} • ${esc(st.batch)}</p></div><button type="button" class="${btnS}" onclick="sheetClose()">✕</button></div>
+    <div id="lg">${paint(l)}</div>
+    <form id="fa" class="grid gap-2 mt-4 pt-4 border-t border-slate-200" novalidate><p class="font-semibold text-brand-800">টাকা জমা / ধার্য যোগ করুন</p>
+      <input id="aM" class="${inp}" value="${esc(curMonth())}" aria-label="মাস">
+      <div class="grid grid-cols-2 gap-2"><input id="aP" type="number" inputmode="numeric" min="0" class="${inp}" placeholder="জমা ৳" aria-label="জমা"><input id="aD" type="number" inputmode="numeric" min="0" class="${inp}" placeholder="ধার্য ৳ (ঐচ্ছিক)" aria-label="ধার্য"></div>
+      <input id="aN" class="${inp}" maxlength="120" placeholder="মন্তব্য (যেমন নগদে, বিকাশে)"><input id="aT" type="date" class="${inp}" value="${todayISO()}" aria-label="তারিখ">
+      <button class="${btnP}" type="submit">যোগ করুন</button></form>`);
+  $("#fa").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const r = await api({ action: "a_fee_add", roll, month: $("#aM").value, paid: $("#aP").value || 0, due: $("#aD").value || 0, note: $("#aN").value, date: $("#aT").value });
+    if (!r.ok) return toast(r.error || "হয়নি।", true);
+    toast("যোগ হয়েছে ✅"); S.students = null; $("#lg").innerHTML = paint(r.ledger); $("#aP").value = ""; $("#aD").value = ""; $("#aN").value = "";
+  });
+  $("#sheetBody").onclick = async e => {
+    const b = e.target.closest("[data-del]"); if (!b) return;
+    if (!confirm("এই সারিটি মুছবেন?")) return;
+    const r = await api({ action: "a_fee_del", roll, row: b.dataset.del, month: b.dataset.m });
+    if (!r.ok) return toast(r.error || "হয়নি।", true);
+    toast("মোছা হয়েছে"); S.students = null; $("#lg").innerHTML = paint(r.ledger);
+  };
+}
+
+/* ===================== উপস্থিতি ===================== */
+let attState = { date: "", batch: "" };
+async function vAtt() {
+  if (!attState.date) attState.date = todayISO();
+  const ov = S.ov || { batches: [] };
+  $("#view").innerHTML = card(`${h3("📅 উপস্থিতি নিন")}<div class="grid grid-cols-2 gap-3">
+      <input id="tD" type="date" class="${inp}" value="${esc(attState.date)}" aria-label="তারিখ">
+      <select id="tB" class="${inp}" aria-label="ব্যাচ"><option value="">সব ব্যাচ</option>${ov.batches.map(b => `<option ${b.name === attState.batch ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select></div>`) + '<div id="al">' + loading() + "</div>";
+  const load = async () => {
+    attState.date = $("#tD").value || todayISO(); attState.batch = $("#tB").value;
+    $("#al").innerHTML = loading();
+    const d = await api({ action: "a_att_get", date: attState.date, batch: attState.batch });
+    if (!d.ok) { $("#al").innerHTML = card(`<p class="text-red-700 text-sm">${esc(d.error)}</p>`); return; }
+    if (!d.students.length) { $("#al").innerHTML = card('<p class="text-sm text-slate-600">এই ব্যাচে কোনো ভর্তিকৃত শিক্ষার্থী নেই (রোল ও ব্যাচ বসাতে হবে)।</p>'); return; }
+    const absent = new Set(d.absent.map(x => x.toUpperCase())); let held = d.held;
+    const paint = () => {
+      const a = d.students.filter(s => absent.has(s.roll.toUpperCase())).length;
+      $("#al").innerHTML = `${d.exists ? '<p class="text-xs text-amber-700 mb-2">ℹ এই তারিখের উপস্থিতি আগেই নেওয়া হয়েছে — বদলে সংরক্ষণ করলে হালনাগাদ হবে।</p>' : ""}
+        <label class="flex items-center gap-3 p-3 mb-3 rounded-xl border border-slate-200 bg-white"><input id="hd" type="checkbox" class="w-5 h-5" ${held ? "" : "checked"}><span>আজ ক্লাস হয়নি (ছুটি)</span></label>
+        <div class="${held ? "" : "opacity-40 pointer-events-none"}"><p class="text-sm text-slate-600 mb-2">অনুপস্থিতদের নামে চাপ দিন — বাকিরা উপস্থিত। <b class="text-emerald-700">উপস্থিত ${bn(d.students.length - a)}</b> • <b class="text-red-700">অনুপস্থিত ${bn(a)}</b></p>
+        ${d.students.map(s => `<button type="button" data-r="${esc(s.roll)}" class="w-full flex items-center justify-between gap-2 rounded-xl border p-3 mb-2 text-left ${absent.has(s.roll.toUpperCase()) ? "bg-red-50 border-red-300" : "bg-white border-slate-200"}"><span class="min-w-0"><b class="truncate">${esc(s.name)}</b> <span class="text-xs text-slate-500">${esc(s.roll)}</span></span><span class="shrink-0 text-sm ${absent.has(s.roll.toUpperCase()) ? "text-red-700 font-bold" : "text-emerald-700"}">${absent.has(s.roll.toUpperCase()) ? "অনুপস্থিত" : "উপস্থিত"}</span></button>`).join("")}</div>
+        <button id="aS" type="button" class="${btnP} w-full mt-2">সংরক্ষণ করুন</button>`;
+      $("#hd").onchange = e => { held = !e.target.checked; paint(); };
+      document.querySelectorAll("#al [data-r]").forEach(b => b.onclick = () => { const k = b.dataset.r.toUpperCase(); absent.has(k) ? absent.delete(k) : absent.add(k); paint(); });
+      $("#aS").onclick = async () => {
+        const r = await api({ action: "a_att_save", date: attState.date, batch: attState.batch, held: held ? "1" : "0", absent: d.students.filter(s => absent.has(s.roll.toUpperCase())).map(s => s.roll).join(", ") });
+        if (!r.ok) return toast(r.error || "হয়নি।", true);
+        toast(r.updated ? "হালনাগাদ হয়েছে ✅" : "সংরক্ষণ হয়েছে ✅"); d.exists = true;
+      };
+    };
+    paint();
+  };
+  $("#tD").addEventListener("change", load); $("#tB").addEventListener("change", load);
+  load();
+}
+
+/* ===================== অফলাইন পরীক্ষার নম্বর ===================== */
+async function vMarks() {
+  const d = await api({ action: "a_off_list" });
+  if (!d.ok) return failView(d);
+  const ov = S.ov || { batches: [] };
+  $("#view").innerHTML = `
+    ${card(`${h3("📝 নতুন ফল তুলুন")}<form id="mf" class="grid gap-3" novalidate>
+      <input id="mE" class="${inp}" maxlength="120" placeholder="পরীক্ষার নাম (যেমন মাসিক পরীক্ষা ১)">
+      <div class="grid grid-cols-2 gap-3"><input id="mDt" type="date" class="${inp}" value="${todayISO()}" aria-label="তারিখ"><input id="mS" class="${inp}" maxlength="60" placeholder="বিষয়" aria-label="বিষয়"></div>
+      <div class="grid grid-cols-2 gap-3"><input id="mT" type="number" inputmode="numeric" min="1" class="${inp}" placeholder="পূর্ণমান" aria-label="পূর্ণমান"><select id="mB" class="${inp}" aria-label="ব্যাচ"><option value="">সব ভর্তিকৃত</option>${ov.batches.map(b => `<option>${esc(b.name)}</option>`).join("")}</select></div>
+      <button class="${btnP}" type="submit">নম্বর তোলা শুরু করুন</button></form>`)}
+    ${card(`${h3("📋 তোলা পরীক্ষাগুলো")}${d.list.length ? d.list.map((x, i) => `<div class="py-2.5 border-t border-slate-100 first:border-0"><div class="flex items-start justify-between gap-2"><button type="button" data-i="${i}" class="text-left min-w-0"><p class="font-medium truncate">${esc(x.exam)}</p><p class="text-xs text-slate-500">${esc(x.subject)} • ${bn(x.date)} • ${bn(x.count)} জন • পূর্ণমান ${bn(x.total)}</p></button>
+        <button type="button" data-p="${i}" class="shrink-0 text-xs rounded-full px-3 py-1.5 ${x.published >= x.count ? "bg-emerald-100 text-emerald-800" : x.published ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"}">${x.published >= x.count ? "✔ প্রকাশিত" : x.published ? "আংশিক প্রকাশিত" : "প্রকাশ করুন"}</button></div></div>`).join("") : '<p class="text-sm text-slate-500">এখনো কোনো ফল তোলা হয়নি।</p>'}`)}`;
+  $("#mf").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const exam = $("#mE").value.trim(), date = $("#mDt").value, subject = $("#mS").value.trim(), total = Number($("#mT").value);
+    if (!exam || !date || !(total > 0)) return toast("পরীক্ষার নাম, তারিখ ও পূর্ণমান দিন।", true);
+    marksEntry({ exam, date, subject, total, batch: $("#mB").value });
+  });
+  $("#view").onclick = async e => {
+    const open = e.target.closest("[data-i]"), pub = e.target.closest("[data-p]");
+    if (open) { const x = d.list[+open.dataset.i]; marksEntry({ exam: x.exam, date: x.date, subject: x.subject, total: x.total, batch: "" }); }
+    if (pub) {
+      const x = d.list[+pub.dataset.p], on = x.published < x.count;
+      if (!confirm(on ? `"${x.exam}" এর ফল শিক্ষার্থীদের কাছে প্রকাশ করবেন? প্রত্যেকে শুধু নিজেরটা দেখবে।` : "প্রকাশ বন্ধ করবেন?")) return;
+      const r = await api({ action: "a_marks_publish", exam: x.exam, date: x.date, subject: x.subject, publish: on ? "1" : "0" });
+      if (!r.ok) return toast(r.error || "হয়নি।", true);
+      toast(on ? "প্রকাশিত হয়েছে ✅" : "প্রকাশ বন্ধ হয়েছে"); vMarks();
+    }
+  };
+}
+async function marksEntry(m) {
+  $("#view").innerHTML = loading();
+  const d = await api({ action: "a_marks_get", exam: m.exam, date: m.date, subject: m.subject, batch: m.batch });
+  if (!d.ok) return failView(d);
+  if (!d.students.length) { $("#view").innerHTML = card('<p class="text-sm">কোনো ভর্তিকৃত শিক্ষার্থী নেই।</p><button type="button" class="' + btnS + ' mt-3" onclick="go(\'mark\')">← ফিরে যান</button>'); return; }
+  const total = m.total || d.total;
+  $("#view").innerHTML = `<button type="button" class="${btnS} mb-3" onclick="go('mark')">← ফিরে যান</button>
+    ${card(`<p class="font-bold text-brand-800">${esc(m.exam)}</p><p class="text-xs text-slate-500">${esc(m.subject)} • ${bn(m.date)} • পূর্ণমান ${bn(total)} • ${esc(m.batch || "সব ভর্তিকৃত")}</p>`)}
+    <p class="text-xs text-slate-500 mb-2">যার নম্বর দেননি (ফাঁকা), তার ফল তোলা হবে না। মেধাক্রম ও মন্তব্য ঐচ্ছিক।</p>
+    <div id="ml">${d.students.map((s, i) => `<div class="bg-white rounded-xl border border-slate-100 p-3 mb-2" data-row="${i}"><div class="flex items-center justify-between gap-2"><p class="min-w-0 truncate"><b>${esc(s.name)}</b> <span class="text-xs text-slate-500">${esc(s.roll)}</span></p>
+      <input type="number" inputmode="decimal" min="0" max="${total}" step="any" class="w-24 rounded-lg border border-slate-300 px-2 py-2 text-right" data-k="got" value="${s.got === "" ? "" : esc(s.got)}" aria-label="নম্বর"></div>
+      <div class="grid grid-cols-3 gap-2 mt-2"><input class="rounded-lg border border-slate-200 px-2 py-1.5 text-sm" data-k="rank" placeholder="মেধাক্রম" value="${esc(s.rank)}"><input class="col-span-2 rounded-lg border border-slate-200 px-2 py-1.5 text-sm" data-k="note" placeholder="মন্তব্য" value="${esc(s.note)}"></div></div>`).join("")}</div>
+    <button id="mSave" type="button" class="${btnP} w-full">সংরক্ষণ করুন</button>`;
+  $("#mSave").onclick = async () => {
+    const rows = Array.from(document.querySelectorAll("#ml [data-row]")).map((el, i) => [d.students[i].roll, el.querySelector('[data-k=got]').value, el.querySelector('[data-k=rank]').value, el.querySelector('[data-k=note]').value]);
+    const b = $("#mSave"); b.disabled = true; b.textContent = "সংরক্ষণ হচ্ছে…"; let saved = 0;
+    for (let i = 0; i < rows.length; i += 15) {
+      const r = await api({ action: "a_marks_save", exam: m.exam, date: m.date, subject: m.subject, total, rows: JSON.stringify(rows.slice(i, i + 15)) });
+      if (!r.ok) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; return toast((r.error || "হয়নি।") + (saved ? ` (${bn(saved)} জনের আগেই সংরক্ষিত)` : ""), true); }
+      saved += r.saved;
+    }
+    b.disabled = false; b.textContent = "সংরক্ষণ করুন"; toast(`${bn(saved)} জনের ফল সংরক্ষিত ✅ — প্রকাশ করতে "নম্বর" পাতায় ফিরে যান`);
+  };
+}
+
+/* ===================== পেমেন্ট ===================== */
+async function vPay() {
+  const d = await api({ action: "a_pay_list" });
+  if (!d.ok) return failView(d);
+  const stCls = s => s === "অনুমোদিত" ? "bg-emerald-100 text-emerald-800" : s === "বাতিল" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800";
+  $("#view").innerHTML = d.list.length ? d.list.map((x, i) => card(`<div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="font-semibold truncate">${esc(x.title)}</p><p class="text-xs text-slate-500">${esc(x.name)} • ${esc(x.phone)}</p></div><span class="shrink-0 text-xs rounded-full px-3 py-1 ${stCls(x.status)}">${esc(x.status)}</span></div>
+      <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-sm mt-3"><p class="text-slate-500">টাকা</p><p class="font-bold text-right">${money(x.amount)}</p><p class="text-slate-500">${esc(x.method)} থেকে</p><p class="text-right">${esc(x.sender)}</p><p class="text-slate-500">TrxID</p><p class="text-right font-mono select-all">${esc(x.trx)}</p></div>
+      ${x.status === "অপেক্ষমাণ" ? `<div class="grid grid-cols-2 gap-2 mt-3"><button type="button" data-a="${i}" data-s="অনুমোদিত" class="${btnP}">✔ অনুমোদন</button><button type="button" data-a="${i}" data-s="বাতিল" class="px-4 py-2.5 rounded-xl border-2 border-red-300 text-red-700 font-semibold">✖ বাতিল</button></div>` : `<button type="button" data-a="${i}" data-s="অপেক্ষমাণ" class="${btnS} mt-3">অপেক্ষমাণে ফেরান</button>`}`)).join("") : '<p class="text-center text-slate-500 py-16">কোনো পেমেন্ট আবেদন নেই।</p>';
+  $("#view").onclick = async e => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    const x = d.list[+b.dataset.a], s = b.dataset.s;
+    if (!confirm(`${x.name} — ${money(x.amount)} (TrxID ${x.trx})\n${s === "অনুমোদিত" ? "টাকা পেয়েছেন নিশ্চিত হয়ে অনুমোদন দেবেন?" : s === "বাতিল" ? "বাতিল করবেন?" : "অপেক্ষমাণে ফেরাবেন?"}`)) return;
+    const r = await api({ action: "a_pay_set", row: x.row, trx: x.trx, status: s });
+    if (!r.ok) return toast(r.error || "হয়নি।", true);
+    toast("হয়েছে ✅"); const o = await api({ action: "a_overview" }); if (o.ok) S.ov = o; go("pay");
+  };
+}
+
+/* ===================== PWA ===================== */
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
+init();
+</script>
+</body>
+</html>
