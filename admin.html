@@ -168,7 +168,7 @@ function go(tab, arg) {
   $("#back").classList.toggle("hidden", !(SUBTABS.includes(tab) && tab !== "qs"));
   $("#tabs > div").innerHTML = TABS.map(t => `<button type="button" data-tab="${t[0]}" class="py-2 text-center ${t[0] === act ? "text-brand-700 font-bold" : "text-slate-500"}"><span class="block text-xl leading-none">${t[1]}</span><span class="block text-[11px] mt-0.5">${t[2]}${t[0] === "more" && S.ov && S.ov.pendingPay ? ` <b class="text-red-600">${bn(S.ov.pendingPay)}</b>` : ""}</span></button>`).join("");
   $("#view").onclick = null; $("#view").innerHTML = loading(); window.scrollTo(0, 0);
-  ({ home: vHome, stu: vStudents, fee: vFees, att: vAtt, mark: vMarks, pay: vPay, more: vMore, exm: vExams, qs: vQs, res: vRes, not: vNot })[tab](arg);
+  ({ home: vHome, stu: vStudents, fee: vFees, att: vAtt, mark: vMarks, pay: vPay, more: vMore, tok: vTok, exm: vExams, qs: vQs, res: vRes, not: vNot })[tab](arg);
 }
 $("#backBtn").addEventListener("click", () => go("more"));
 $("#tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) go(b.dataset.tab); });
@@ -429,13 +429,14 @@ async function vPay() {
 }
 
 /* ===================== আরও (মেনু) ===================== */
-const SUBTABS = ["mark", "pay", "exm", "qs", "res", "not"];
+const SUBTABS = ["mark", "pay", "exm", "qs", "res", "not", "tok"];
 function vMore() {
   const pend = S.ov && S.ov.pendingPay ? ` <b class="ml-1 px-2 rounded-full bg-red-600 text-white text-xs">${bn(S.ov.pendingPay)}</b>` : "";
   const item = (t, ic, label, sub) => `<button type="button" data-go="${t}" class="w-full text-left bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center gap-4"><span class="text-3xl">${ic}</span><span class="min-w-0"><span class="block font-semibold text-brand-800">${label}</span><span class="block text-xs text-slate-500">${sub}</span></span></button>`;
   $("#view").innerHTML = item("exm", "📝", "অনলাইন পরীক্ষা ও প্রশ্ন", "পরীক্ষা বানান, প্রশ্ন যোগ করুন, লুকান/দেখান")
     + item("res", "📚", "রিসোর্স (PDF)", "PDF আপলোড করুন, কাদের জন্য ও ফি ঠিক করুন")
     + item("not", "📢", "নোটিশ", "সাইটের নোটিশ বোর্ডে লিখুন, বদলান বা লুকান")
+    + item("tok", "🪙", "টোকেন", "ব্যালান্স দেখুন, হাতে যোগ/কর্তন করুন, দাম ও উপহার ঠিক করুন")
     + item("mark", "🧾", "অফলাইন পরীক্ষার নম্বর", "নম্বর তুলুন ও প্রকাশ করুন")
     + item("pay", "💳", "পেমেন্ট অনুমোদন" + pend, "বিকাশ/নগদের আবেদন মিলিয়ে অনুমোদন দিন");
 }
@@ -455,7 +456,7 @@ async function apiPost(params) {
 const fld = (label, inner, hint) => `<div><label class="block text-sm font-medium mb-1">${label}</label>${inner}${hint ? `<p class="text-xs text-slate-500 mt-1">${hint}</p>` : ""}</div>`;
 const sel = (id, opts, cur) => `<select id="${id}" class="${inp}">${opts.map(o => `<option ${o === cur ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
 const errBox = () => `<p id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>`;
-const showErr = m => { const e = $("#fErr"); if (e) { e.textContent = m; e.classList.remove("hidden"); } else toast(m, true); };
+const showErr = m => { const e = document.querySelector("#sheet:not(.hidden) #fErr") || $("#fErr"); if (e) { e.textContent = m; e.classList.remove("hidden"); } else toast(m, true); };
 const v$ = id => ($("#" + id).value || "").trim();
 const localDT = ms => { const d = new Date(ms + 6 * 3600e3); return d.toISOString().slice(0, 16); };
 const CLS_HINT = ["সকল শ্রেণি", "তৃতীয় শ্রেণি", "চতুর্থ শ্রেণি", "পঞ্চম শ্রেণি", "ষষ্ঠ শ্রেণি", "সপ্তম শ্রেণি", "অষ্টম শ্রেণি", "নবম শ্রেণি", "দশম শ্রেণি", "নবম-দশম", "একাদশ-দ্বাদশ", "NU ভর্তি"];
@@ -492,7 +493,7 @@ function exForm(x) {
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">${fld("শুরু", `<input id="xS" type="datetime-local" class="${inp}" value="${esc(x.start)}">`)}${fld("শেষ", `<input id="xE" type="datetime-local" class="${inp}" value="${esc(x.end)}">`)}</div>
       ${fld("পরীক্ষার সময় (মিনিট)", `<input id="xD" type="number" inputmode="numeric" min="1" max="600" class="${inp}" value="${esc(x.dur)}">`)}
       <div class="grid grid-cols-2 gap-3">${fld("এলোমেলো", sel("xH", ["সব", "শুধু প্রশ্ন", "না"], x.shuffle), "")}${fld("উত্তর কখন দেখাবে", sel("xA", ["সময়সীমা শেষে", "জমার পরপরই"], x.ans))}</div>
-      <div class="grid grid-cols-2 gap-3">${fld("ফ্রি / পেইড", sel("xP", ["ফ্রি", "পেইড"], x.paid ? "পেইড" : "ফ্রি"))}${fld("ফি (৳)", `<input id="xF" type="number" inputmode="numeric" min="0" class="${inp}" value="${esc(x.fee)}">`)}</div>
+      <div class="grid grid-cols-2 gap-3">${fld("ফ্রি / পেইড", sel("xP", ["ফ্রি", "পেইড"], x.paid ? "পেইড" : "ফ্রি"))}${fld("ফি (টোকেন)", `<input id="xF" type="number" inputmode="numeric" min="0" class="${inp}" value="${esc(x.fee)}">`)}</div>
       ${fld("নির্দেশনা (ঐচ্ছিক)", `<textarea id="xI" rows="3" maxlength="400" class="${inp}">${esc(x.info)}</textarea>`)}
       <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200"><input id="xW" type="checkbox" class="w-5 h-5" ${x.show ? "checked" : ""}><span>সাইটে দেখান <span class="text-xs text-slate-500">(বন্ধ করলে লুকানো থাকবে)</span></span></label>
       ${errBox()}
@@ -627,7 +628,7 @@ function resForm(x) {
       ${fld("নাম", `<input id="rT" class="${inp}" maxlength="120" value="${esc(x.title)}" placeholder="যেমন: গণিত অধ্যায় ১ নোট">`)}
       <div class="grid grid-cols-2 gap-3">${fld("শ্রেণি", `<input id="rC" list="clsl" class="${inp}" value="${esc(x.cls)}">`)}${fld("বিষয়", `<input id="rS" class="${inp}" maxlength="60" value="${esc(x.subject)}" placeholder="গণিত">`)}</div>
       <div class="grid grid-cols-2 gap-3">${fld("ধরন", `<input id="rY" list="tpl" class="${inp}" maxlength="40" value="${esc(x.type)}">`)}${fld("তারিখ", `<input id="rD" type="date" class="${inp}" value="${esc(x.date)}">`)}</div>
-      <div class="grid grid-cols-2 gap-3">${fld("কারা পাবে", sel("rM", ["সাইন ইন", "ভর্তিকৃত", "পেইড"], x.mode), "সাইন ইন = যেকোনো সাইন ইন করা শিক্ষার্থী")}${fld("ফি (৳)", `<input id="rF2" type="number" inputmode="numeric" min="0" class="${inp}" value="${esc(x.fee)}">`, "শুধু পেইডের জন্য")}</div>
+      <div class="grid grid-cols-2 gap-3">${fld("কারা পাবে", sel("rM", ["সাইন ইন", "ভর্তিকৃত", "পেইড"], x.mode), "সাইন ইন = যেকোনো সাইন ইন করা শিক্ষার্থী")}${fld("ফি (টোকেন)", `<input id="rF2" type="number" inputmode="numeric" min="0" class="${inp}" value="${esc(x.fee)}">`, "শুধু পেইডের জন্য")}</div>
       <div class="rounded-xl border border-slate-200 p-3 grid gap-2">
         <p class="text-sm font-medium">📎 PDF ফাইল</p>
         <input id="rFile" type="file" accept="application/pdf" class="text-sm">
@@ -703,6 +704,67 @@ function noticeForm(x) {
     const r = await apiPost({ action: "a_notice_del", row: x.row, title: x.title });
     if (!r.ok) return showErr(r.error || "মোছা যায়নি।");
     toast("মোছা হয়েছে"); sheetClose(); vNot();
+  };
+}
+
+
+/* ===================== টোকেন ===================== */
+let TKD = null, tkQ = "";
+async function vTok() {
+  const d = await api({ action: "a_tokens" });
+  if (!d.ok) return failView(d);
+  TKD = d;
+  const st = d.settings || {};
+  const stat = (n, l, tone) => `<div class="rounded-2xl border p-3 text-center ${tone}"><p class="text-2xl font-bold">${bn(n)}</p><p class="text-xs">${l}</p></div>`;
+  $("#view").innerHTML = `<div class="grid grid-cols-3 gap-2 mb-4">${stat(d.sold, "বিক্রি (টোকেন)", "bg-emerald-50 border-emerald-200 text-emerald-900")}${stat(d.spent, "খরচ হয়েছে", "bg-white border-slate-100")}${stat(d.gift, "উপহার দেওয়া", "bg-amber-50 border-amber-200 text-amber-900")}</div>
+    <p class="text-xs text-slate-500 -mt-2 mb-4">বিক্রির টাকা (আনুমানিক): ${money(d.sold * (st.price || 5))}</p>
+    ${card(`${h3("দাম ও উপহার")}<form id="tsF" class="grid gap-3" novalidate>
+      <div class="grid grid-cols-3 gap-2">${fld("প্রতি টোকেন (৳)", `<input id="tsP" type="number" inputmode="decimal" min="1" class="${inp}" value="${esc(st.price)}">`)}${fld("কমপক্ষে কেনা", `<input id="tsM" type="number" inputmode="numeric" min="1" class="${inp}" value="${esc(st.minBuy)}">`)}${fld("সাইন আপ উপহার", `<input id="tsG" type="number" inputmode="numeric" min="0" class="${inp}" value="${esc(st.gift)}">`)}</div>
+      <div class="grid grid-cols-2 gap-2">${fld("বিকাশ নম্বর", `<input id="tsB" type="tel" class="${inp}" value="${esc(st.bkash)}">`)}${fld("নগদ নম্বর", `<input id="tsN" type="tel" class="${inp}" value="${esc(st.nagad)}">`)}</div>
+      <p id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
+      <button id="tsGo" type="submit" class="${btnP}">সংরক্ষণ করুন</button></form>`)}
+    <input id="tkq" type="search" placeholder="নাম বা ইমেইল খুঁজুন" value="${esc(tkQ)}" class="${inp} mb-3">
+    <div id="tkl"></div>`;
+  $("#tsF").onsubmit = async ev => {
+    ev.preventDefault(); const b = $("#tsGo"); b.disabled = true; b.textContent = "সংরক্ষণ হচ্ছে…";
+    const r = await apiPost({ action: "a_token_settings", price: v$("tsP"), minBuy: v$("tsM"), gift: v$("tsG"), bkash: v$("tsB"), nagad: v$("tsN") });
+    b.disabled = false; b.textContent = "সংরক্ষণ করুন";
+    if (!r.ok) return showErr(r.error || "সংরক্ষণ হয়নি।");
+    toast("সংরক্ষিত ✅"); TKD.settings = r.settings;
+  };
+  const draw = () => {
+    const q = tkQ.trim().toLowerCase();
+    const L = TKD.users.filter(u => !q || (u.name + " " + u.email).toLowerCase().includes(q));
+    $("#tkl").innerHTML = L.length ? L.map(u => `<button type="button" data-tu="${esc(u.uid)}" class="w-full text-left bg-white rounded-xl border border-slate-100 shadow-sm p-3 mb-2 flex items-center justify-between gap-3"><span class="min-w-0"><span class="block font-medium truncate">${esc(u.name)}</span><span class="block text-xs text-slate-500 truncate">${esc(u.email)}</span></span><b class="shrink-0 text-lg text-brand-800">🪙 ${bn(u.balance)}</b></button>`).join("") : '<p class="text-center text-slate-500 py-6 text-sm">কোনো ব্যবহারকারী পাওয়া যায়নি।</p>';
+  };
+  draw();
+  $("#tkq").oninput = e => { tkQ = e.target.value; draw(); };
+  $("#view").onclick = e => { const b = e.target.closest("[data-tu]"); if (b) tokUser(TKD.users.find(u => u.uid === b.dataset.tu)); };
+}
+async function tokUser(u) {
+  sheet(`<p class="font-bold text-lg text-brand-800">${esc(u.name)}</p><p class="text-xs text-slate-500 break-all mb-3">${esc(u.email)} • ব্যালান্স <b id="tuBal">${bn(u.balance)}</b></p>
+    <form id="tuF" class="grid gap-3 mb-4" novalidate>
+      <div class="grid grid-cols-3 gap-2">${fld("সংখ্যা", `<input id="tuQ" type="number" inputmode="numeric" class="${inp}" placeholder="5 বা -2">`, "")}<div class="col-span-2">${fld("কারণ (দরকারি)", `<input id="tuN" class="${inp}" maxlength="120" placeholder="যেমন: ভুল পেমেন্ট সমন্বয়">`)}</div></div>
+      <p class="text-xs text-slate-500 -mt-1">যোগ করতে ধনাত্মক (5), কমাতে ঋণাত্মক (-2) সংখ্যা দিন।</p>
+      <p id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
+      <button id="tuGo" type="submit" class="${btnP}">প্রয়োগ করুন</button></form>
+    <p class="font-semibold text-sm mb-2">সাম্প্রতিক হিসাব</p><div id="tuLog" class="text-sm"><p class="text-slate-500">লোড হচ্ছে…</p></div>`);
+  const logIt = async () => {
+    const d = await api({ action: "a_token_log", uid: u.uid }); const el = $("#tuLog"); if (!el) return;
+    el.innerHTML = d.ok && d.list.length ? d.list.map(t => `<div class="flex items-start justify-between gap-3 py-2 border-t border-slate-100"><div class="min-w-0"><p class="font-medium">${esc(t.type)}</p><p class="text-xs text-slate-500 break-words">${esc(t.desc)}</p></div><b class="shrink-0 ${t.qty < 0 ? "text-red-700" : "text-emerald-700"}">${t.qty > 0 ? "+" : ""}${bn(t.qty)}</b></div>`).join("") : '<p class="text-slate-500">কিছু নেই।</p>';
+  };
+  logIt();
+  $("#tuF").onsubmit = async ev => {
+    ev.preventDefault();
+    const qty = +v$("tuQ");
+    if (!qty) return showErr("সংখ্যা দিন।");
+    if (!confirm(`${u.name}-এর টোকেন ${qty > 0 ? "+" : ""}${qty} করা হবে। নিশ্চিত?`)) return;
+    const b = $("#tuGo"); b.disabled = true;
+    const r = await apiPost({ action: "a_token_adjust", uid: u.uid, qty, note: v$("tuN") });
+    b.disabled = false;
+    if (!r.ok) return showErr(r.error || "হয়নি।");
+    toast("হয়েছে ✅"); u.balance = r.balance; $("#tuBal").textContent = bn(r.balance); $("#tuQ").value = ""; $("#tuN").value = ""; logIt();
+    const d = await api({ action: "a_tokens" }); if (d.ok) { TKD = d; const el = $("#tkl"); if (el) $("#tkq").dispatchEvent(new Event("input")); }
   };
 }
 
