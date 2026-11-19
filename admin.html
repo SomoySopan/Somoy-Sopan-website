@@ -43,6 +43,7 @@
     <h1 class="font-bold text-xl text-brand-800 mt-3">সময় সোপান — অ্যাডমিন</h1>
     <p id="gateMsg" class="text-sm text-slate-600 mt-2">লোড হচ্ছে…</p>
     <button id="gIn" type="button" class="hidden mt-5 w-full py-3 rounded-xl border border-slate-300 bg-white font-semibold">Google দিয়ে সাইন ইন</button>
+    <div id="gCodeBox" class="hidden mt-4 grid gap-3"><input id="gCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="৬ অঙ্কের কোড" class="w-full text-center text-2xl tracking-widest rounded-xl border border-slate-300 px-3 py-3"><button id="gCodeGo" type="button" class="w-full py-3 rounded-xl bg-brand-700 text-white font-semibold">নিশ্চিত করুন</button><p id="gCodeErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p></div>
     <button id="gOut" type="button" class="hidden mt-3 w-full py-3 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold">সাইন আউট</button>
   </div>
 </div>
@@ -110,15 +111,19 @@ const h3 = t => `<h3 class="font-semibold text-brand-800 mb-3">${t}</h3>`;
 
 /* ===================== API ===================== */
 let user = null, fb = null, S = { ov: null, students: null, nextRoll: "SS-001", tab: "home" };
+let S2 = ""; try { S2 = localStorage.getItem("ss_s2") || ""; } catch (e) {}
+const s2Set = v => { S2 = v || ""; try { if (S2) localStorage.setItem("ss_s2", S2); else localStorage.removeItem("ss_s2"); } catch (e) {} };
 async function api(params) {
   const u = new URL(CONFIG.examApi);
   if (user) { try { params.idt = await user.getIdToken(); } catch (e) {} }
+  if (S2) params.s2 = S2;
   Object.keys(params).forEach(k => u.searchParams.set(k, params[k]));
   u.searchParams.set("_", Date.now());
   let d;
   try { const r = await fetch(u.toString(), { cache: "no-store" }); d = await r.json(); } catch (e) { return { ok: false, error: "ইন্টারনেট সংযোগে সমস্যা। আবার চেষ্টা করুন।", code: "net" }; }
   if (d && d.code === "auth" && fb) fb.signOut().catch(() => {});
   if (d && d.code === "forbidden") gate("denied");
+  if (d && d.code === "need2fa") { s2Set(""); gate("code"); }
   return d;
 }
 
@@ -126,7 +131,8 @@ async function api(params) {
 function gate(mode) {
   $("#app").classList.add("hidden"); $("#gate").classList.remove("hidden"); sheetClose();
   const msg = $("#gateMsg"), gi = $("#gIn"), go = $("#gOut");
-  gi.classList.add("hidden"); go.classList.add("hidden");
+  gi.classList.add("hidden"); go.classList.add("hidden"); $("#gCodeBox").classList.add("hidden");
+  if (mode === "code") { msg.textContent = "অথেন্টিকেটর অ্যাপ খুলে ৬ অঙ্কের কোডটি দিন।"; $("#gCodeBox").classList.remove("hidden"); go.classList.remove("hidden"); $("#gCode").value = ""; setTimeout(() => $("#gCode").focus(), 50); return; }
   if (mode === "in") { msg.textContent = "মালিকের Google অ্যাকাউন্ট দিয়ে সাইন ইন করুন।"; gi.classList.remove("hidden"); }
   else if (mode === "denied") { msg.innerHTML = "এই অংশ শুধু কোচিংয়ের মালিকের জন্য।<br><span class='text-xs text-slate-500'>" + esc((user && user.email) || "") + "</span>"; go.classList.remove("hidden"); }
   else if (mode === "fail") { msg.textContent = "সাইন ইন ব্যবস্থা চালু করা যায়নি। ইন্টারনেট দেখে পাতাটি রিফ্রেশ করুন।"; }
@@ -145,13 +151,24 @@ async function init() {
   fb.onAuthStateChanged(async u => {
     user = u;
     if (!u) { S = { ov: null, students: null, nextRoll: "SS-001", tab: "home" }; return gate("in"); }
-    $("#gateMsg").textContent = "যাচাই করা হচ্ছে…";
-    const d = await api({ action: "a_overview" });
-    if (!d.ok) { if (d.code === "forbidden") return gate("denied"); $("#gateMsg").textContent = d.error || "লোড করা যায়নি।"; $("#gOut").classList.remove("hidden"); return; }
-    S.ov = d; $("#who").textContent = u.email; $("#gate").classList.add("hidden"); $("#app").classList.remove("hidden");
-    go(S.tab || "home");
+    enterApp();
   });
 }
+async function enterApp() {
+  $("#gateMsg").textContent = "যাচাই করা হচ্ছে…";
+  const d = await api({ action: "a_overview" });
+  if (!d.ok) { if (d.code === "forbidden" || d.code === "need2fa") return; $("#gateMsg").textContent = d.error || "লোড করা যায়নি।"; $("#gOut").classList.remove("hidden"); return; }
+  S.ov = d; $("#who").textContent = user.email; $("#gate").classList.add("hidden"); $("#app").classList.remove("hidden");
+  go(S.tab || "home");
+}
+$("#gCodeGo").addEventListener("click", async () => {
+  const b = $("#gCodeGo"), er = $("#gCodeErr"); er.classList.add("hidden"); b.disabled = true;
+  const d = await apiPost({ action: "a_2fa_login", code: $("#gCode").value });
+  b.disabled = false;
+  if (!d.ok) { er.textContent = d.error || "কোড যাচাই করা যায়নি।"; er.classList.remove("hidden"); return; }
+  s2Set(d.s2); enterApp();
+});
+$("#gCode").addEventListener("keydown", e => { if (e.key === "Enter") $("#gCodeGo").click(); });
 $("#gIn").addEventListener("click", async () => {
   try { await fb.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
   catch (e) { toast(e && e.code === "auth/popup-closed-by-user" ? "সাইন ইন বাতিল হয়েছে।" : "সাইন ইন করা যায়নি। ফেসবুক/মেসেঞ্জারের ভেতরের ব্রাউজারে না খুলে Chrome-এ খুলুন।", true); }
@@ -168,7 +185,7 @@ function go(tab, arg) {
   $("#back").classList.toggle("hidden", !(SUBTABS.includes(tab) && tab !== "qs"));
   $("#tabs > div").innerHTML = TABS.map(t => `<button type="button" data-tab="${t[0]}" class="py-2 text-center ${t[0] === act ? "text-brand-700 font-bold" : "text-slate-500"}"><span class="block text-xl leading-none">${t[1]}</span><span class="block text-[11px] mt-0.5">${t[2]}${t[0] === "more" && S.ov && S.ov.pendingPay ? ` <b class="text-red-600">${bn(S.ov.pendingPay)}</b>` : ""}</span></button>`).join("");
   $("#view").onclick = null; $("#view").innerHTML = loading(); window.scrollTo(0, 0);
-  ({ home: vHome, stu: vStudents, fee: vFees, att: vAtt, mark: vMarks, pay: vPay, more: vMore, tok: vTok, exm: vExams, qs: vQs, res: vRes, not: vNot })[tab](arg);
+  ({ home: vHome, stu: vStudents, fee: vFees, att: vAtt, mark: vMarks, pay: vPay, more: vMore, tok: vTok, exm: vExams, qs: vQs, res: vRes, not: vNot, cr: vCr, step: vStep, sec: vSec })[tab](arg);
 }
 $("#backBtn").addEventListener("click", () => go("more"));
 $("#tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) go(b.dataset.tab); });
@@ -188,6 +205,7 @@ async function vHome() {
   const stat = (n, label, tone, tab, arg) => `<button type="button" data-go="${tab}" data-arg="${arg || ""}" class="text-left rounded-2xl border p-4 ${tone}"><p class="text-3xl font-bold">${n}</p><p class="text-sm mt-0.5">${label}</p></button>`;
   const warns = [];
   if (d.dupRolls) warns.push(`❌ ${bn(d.dupRolls)}টি রোল একাধিক জনের — শিক্ষার্থী পাতায় ঠিক করুন।`);
+  if (!d.tf) warns.push("🔐 দুই ধাপের নিরাপত্তা বন্ধ আছে — \"আরও → দুই ধাপের নিরাপত্তা\" থেকে চালু করুন।");
   if (d.enrolledNoRoll) warns.push(`⚠ ${bn(d.enrolledNoRoll)} জন ভর্তিকৃতের রোল নেই।`);
   $("#view").innerHTML = `
     <div class="grid grid-cols-2 gap-3 mb-4">
@@ -429,12 +447,15 @@ async function vPay() {
 }
 
 /* ===================== আরও (মেনু) ===================== */
-const SUBTABS = ["mark", "pay", "exm", "qs", "res", "not", "tok"];
+const SUBTABS = ["mark", "pay", "exm", "qs", "res", "not", "tok", "cr", "step", "sec"];
 function vMore() {
   const pend = S.ov && S.ov.pendingPay ? ` <b class="ml-1 px-2 rounded-full bg-red-600 text-white text-xs">${bn(S.ov.pendingPay)}</b>` : "";
   const item = (t, ic, label, sub) => `<button type="button" data-go="${t}" class="w-full text-left bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center gap-4"><span class="text-3xl">${ic}</span><span class="min-w-0"><span class="block font-semibold text-brand-800">${label}</span><span class="block text-xs text-slate-500">${sub}</span></span></button>`;
   $("#view").innerHTML = item("exm", "📝", "অনলাইন পরীক্ষা ও প্রশ্ন", "পরীক্ষা বানান, প্রশ্ন যোগ করুন, লুকান/দেখান")
     + item("res", "📚", "রিসোর্স (PDF)", "PDF আপলোড করুন, কাদের জন্য ও ফি ঠিক করুন")
+    + item("sec", "🔐", "দুই ধাপের নিরাপত্তা", S.ov && S.ov.tf ? "✅ চালু আছে" : "অথেন্টিকেটর অ্যাপের কোড দিয়ে অ্যাডমিন লগইন আরও নিরাপদ করুন")
+    + item("step", "🪜", "সোপান ধাপ", "শিক্ষার্থীর শুরুর ও মাসের নম্বর বসান, ধাপ নিজে হিসাব হবে")
+    + item("cr", "🎥", "অনলাইন কোর্স", "সাইটের অনলাইন কোর্সের তালিকা — যোগ, বদল, লুকান")
     + item("not", "📢", "নোটিশ", "সাইটের নোটিশ বোর্ডে লিখুন, বদলান বা লুকান")
     + item("tok", "🪙", "টোকেন", "ব্যালান্স দেখুন, হাতে যোগ/কর্তন করুন, দাম ও উপহার ঠিক করুন")
     + item("mark", "🧾", "অফলাইন পরীক্ষার নম্বর", "নম্বর তুলুন ও প্রকাশ করুন")
@@ -444,6 +465,7 @@ function vMore() {
 /* ===================== POST (বড় অনুরোধ) ===================== */
 async function apiPost(params) {
   if (user) { try { params.idt = await user.getIdToken(); } catch (e) {} }
+  if (S2) params.s2 = S2;
   let d;
   try {
     const r = await fetch(CONFIG.examApi, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(params) });
@@ -451,6 +473,7 @@ async function apiPost(params) {
   } catch (e) { return { ok: false, error: "ইন্টারনেট সংযোগে সমস্যা। আবার চেষ্টা করুন।", code: "net" }; }
   if (d && d.code === "auth" && fb) fb.signOut().catch(() => {});
   if (d && d.code === "forbidden") gate("denied");
+  if (d && d.code === "need2fa") { s2Set(""); gate("code"); }
   return d;
 }
 const fld = (label, inner, hint) => `<div><label class="block text-sm font-medium mb-1">${label}</label>${inner}${hint ? `<p class="text-xs text-slate-500 mt-1">${hint}</p>` : ""}</div>`;
@@ -459,7 +482,7 @@ const errBox = () => `<p id="fErr" class="hidden text-sm text-red-700 bg-red-50 
 const showErr = m => { const e = document.querySelector("#sheet:not(.hidden) #fErr") || $("#fErr"); if (e) { e.textContent = m; e.classList.remove("hidden"); } else toast(m, true); };
 const v$ = id => ($("#" + id).value || "").trim();
 const localDT = ms => { const d = new Date(ms + 6 * 3600e3); return d.toISOString().slice(0, 16); };
-const CLS_HINT = ["সকল শ্রেণি", "তৃতীয় শ্রেণি", "চতুর্থ শ্রেণি", "পঞ্চম শ্রেণি", "ষষ্ঠ শ্রেণি", "সপ্তম শ্রেণি", "অষ্টম শ্রেণি", "নবম শ্রেণি", "দশম শ্রেণি", "নবম-দশম", "একাদশ-দ্বাদশ", "NU ভর্তি"];
+const CLS_HINT = ["সকল শ্রেণি", "প্রথম শ্রেণি", "দ্বিতীয় শ্রেণি", "তৃতীয় শ্রেণি", "চতুর্থ শ্রেণি", "পঞ্চম শ্রেণি", "ষষ্ঠ শ্রেণি", "সপ্তম শ্রেণি", "অষ্টম শ্রেণি", "নবম শ্রেণি", "দশম শ্রেণি", "নবম-দশম", "একাদশ-দ্বাদশ", "NU ভর্তি"];
 const clsList = `<datalist id="clsl">${CLS_HINT.map(c => `<option value="${esc(c)}">`).join("")}</datalist>`;
 
 /* ===================== পরীক্ষা ===================== */
@@ -707,6 +730,118 @@ function noticeForm(x) {
   };
 }
 
+
+/* ===================== দুই ধাপের নিরাপত্তা ===================== */
+async function vSec() {
+  const d = await api({ action: "a_2fa_status" });
+  if (!d.ok) return failView(d);
+  if (S.ov) S.ov.tf = d.on;
+  if (d.on) {
+    $("#view").innerHTML = card(`<p class="text-lg font-bold text-emerald-700">✅ দুই ধাপের নিরাপত্তা চালু আছে</p>
+      <p class="text-sm text-slate-600 mt-2 leading-relaxed">এখন Google দিয়ে সাইন ইনের পরেও অথেন্টিকেটর অ্যাপের ৬ অঙ্কের কোড লাগে। একবার কোড দিলে প্রায় ১২ ঘণ্টা আর চাইবে না। পাঁচবার ভুল কোড দিলে ১৫ মিনিট বন্ধ থাকে।</p>
+      <p class="text-sm text-slate-600 mt-3 leading-relaxed"><b>ফোন হারালে বা অ্যাপ বদলালে:</b> Google Apps Script খুলে <code>reset2FA</code> ফাংশনটি একবার Run করুন (শুধু স্ক্রিপ্টের মালিক পারেন)। তারপর এখান থেকে নতুন করে চালু করুন।</p>`);
+    return;
+  }
+  $("#view").innerHTML = card(`<p class="text-lg font-bold text-brand-800">🔐 দুই ধাপের নিরাপত্তা</p>
+    <p class="text-sm text-slate-600 mt-2 leading-relaxed">চালু করলে কেউ আপনার Google পাসওয়ার্ড জেনে গেলেও আপনার ফোনের কোড ছাড়া অ্যাডমিন পেজে ঢুকতে পারবে না।</p>
+    <button id="tfStart" type="button" class="${btnP} w-full mt-4">চালু করুন</button><div id="tfBox"></div>`);
+  $("#tfStart").onclick = async () => {
+    const b = $("#tfStart"); b.disabled = true;
+    const r = await api({ action: "a_2fa_begin" });
+    b.disabled = false;
+    if (!r.ok) return toast(r.error || "শুরু করা যায়নি।", true);
+    b.classList.add("hidden");
+    $("#tfBox").innerHTML = `<ol class="text-sm text-slate-700 mt-4 grid gap-3 leading-relaxed">
+      <li><b>১.</b> ফোনে <b>Google Authenticator</b> (বা যেকোনো অথেন্টিকেটর অ্যাপ) ইনস্টল করুন।</li>
+      <li><b>২.</b> অ্যাপে <b>+ → "Enter a setup key" / সেটআপ কী লিখুন</b> চাপুন। অ্যাকাউন্টের নাম: সময় সোপান। নিচের কী-টি বসান (টাইম-ভিত্তিক / Time based):</li></ol>
+      <p class="mt-2 p-3 rounded-xl bg-slate-100 font-mono text-lg tracking-wider text-center break-all select-all">${esc(r.secret)}</p>
+      <a href="${esc(r.uri)}" class="block text-center text-sm text-brand-700 underline mt-2">📲 অ্যাপে সরাসরি খুলুন (ফোনে)</a>
+      <p class="text-sm text-slate-700 mt-4"><b>৩.</b> অ্যাপে যে ৬ অঙ্কের কোড দেখাচ্ছে সেটি লিখে নিশ্চিত করুন:</p>
+      <input id="tfCode" type="text" inputmode="numeric" maxlength="7" placeholder="৬ অঙ্কের কোড" class="${inp} text-center text-xl tracking-widest mt-2">
+      <p id="tfErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-2"></p>
+      <button id="tfOk" type="button" class="${btnP} w-full mt-3">নিশ্চিত করে চালু করুন</button>
+      <p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">⚠ কী-টি কাগজে লিখে নিরাপদ জায়গায় রাখুন। এটি আর দেখানো হবে না।</p>`;
+    $("#tfOk").onclick = async () => {
+      const ob = $("#tfOk"), er = $("#tfErr"); er.classList.add("hidden"); ob.disabled = true;
+      const c = await apiPost({ action: "a_2fa_confirm", code: $("#tfCode").value });
+      ob.disabled = false;
+      if (!c.ok) { er.textContent = c.error || "চালু করা যায়নি।"; er.classList.remove("hidden"); return; }
+      s2Set(c.s2); toast("দুই ধাপের নিরাপত্তা চালু হয়েছে ✅"); vSec();
+    };
+  };
+}
+
+/* ===================== অনলাইন কোর্স ===================== */
+let CRL = [];
+async function vCr() {
+  const d = await api({ action: "a_course_list" });
+  if (!d.ok) return failView(d);
+  CRL = d.list;
+  const cc = { "চালু": "bg-emerald-100 text-emerald-800", "শীঘ্রই": "bg-amber-100 text-amber-800", "ভর্তি বন্ধ": "bg-slate-200 text-slate-700" };
+  $("#view").innerHTML = `<button id="cNew" type="button" class="${btnP} w-full mb-4">➕ নতুন অনলাইন কোর্স</button><p class="text-xs text-slate-500 mb-3">এখানকার কোর্সগুলো সাইটের "অনলাইন কোর্স" অংশে কার্ড হিসেবে দেখায়। ভর্তি/আগ্রহের বার্তা আপনার WhatsApp-এ আসে।</p>`
+    + (CRL.length ? CRL.map((x, i) => `<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3"><div class="flex items-start justify-between gap-2"><p class="font-semibold">${esc(x.title)}</p><span class="shrink-0 text-xs px-2 py-1 rounded-full ${cc[x.status] || cc["শীঘ্রই"]}">${esc(x.status)}</span></div><p class="text-sm text-slate-500 mt-1">🎓 ${esc(x.cls)}${x.fee ? " • ৳" + esc(x.fee) + "/মাস" : ""}${x.show ? "" : " • <b>লুকানো</b>"}</p><button type="button" data-c="${i}" class="${btnS} mt-3 py-2">✏ বদলান</button></div>`).join("") : '<p class="text-center text-slate-500 py-8">এখনো কোনো কোর্স নেই।</p>');
+  $("#cNew").onclick = () => courseForm(null);
+  $("#view").onclick = e => { const b = e.target.closest("[data-c]"); if (b) courseForm(CRL[+b.dataset.c]); };
+}
+function courseForm(x) {
+  const n = !x; x = x || { row: 0, title: "", cls: "", desc: "", mode: "লাইভ + রেকর্ডেড", start: "", fee: "", status: "শীঘ্রই", show: true };
+  sheet(`<p class="font-bold text-lg text-brand-800 mb-3">${n ? "নতুন অনলাইন কোর্স" : "কোর্স সম্পাদনা"}</p>${clsList}
+    <form id="cF" class="grid gap-3" novalidate>
+      ${fld("কোর্সের নাম", `<input id="cT" class="${inp}" maxlength="120" value="${esc(x.title)}">`)}
+      ${fld("কোন শ্রেণির জন্য", `<input id="cC" list="clsl" class="${inp}" maxlength="80" value="${esc(x.cls)}" placeholder="যেমন: নবম-দশম বা প্রথম-পঞ্চম">`, "প্রথম থেকে দ্বাদশ ও NU। একাধিক হলে কমা বা ড্যাশ দিন।")}
+      ${fld("বিবরণ", `<textarea id="cD" rows="3" maxlength="500" class="${inp}">${esc(x.desc)}</textarea>`)}
+      <div class="grid grid-cols-2 gap-3">${fld("ধরন", `<input id="cM" class="${inp}" maxlength="40" value="${esc(x.mode)}">`)}${fld("অবস্থা", sel("cS", ["চালু", "শীঘ্রই", "ভর্তি বন্ধ"], x.status))}</div>
+      <div class="grid grid-cols-2 gap-3">${fld("শুরুর তারিখ", `<input id="cA" class="${inp}" maxlength="40" value="${esc(x.start)}" placeholder="যেমন: ১ জানুয়ারি ২০২৭">`)}${fld("মাসিক ফি (৳)", `<input id="cF2" inputmode="numeric" class="${inp}" maxlength="6" value="${esc(x.fee)}">`)}</div>
+      <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200"><input id="cW" type="checkbox" class="w-5 h-5" ${x.show ? "checked" : ""}><span>সাইটে দেখান</span></label>
+      ${errBox()}
+      <button id="cGo" type="submit" class="${btnP}">${n ? "যোগ করুন" : "সংরক্ষণ করুন"}</button>
+      ${n ? "" : `<button id="cDel" type="button" class="px-4 py-2.5 rounded-xl border border-red-300 text-red-700 font-semibold">🗑 কোর্স মুছুন</button>`}
+    </form>`);
+  $("#cF").onsubmit = async ev => {
+    ev.preventDefault(); const b = $("#cGo"); b.disabled = true;
+    const r = await apiPost({ action: "a_course_save", row: x.row, title: v$("cT"), cls: v$("cC"), desc: v$("cD"), mode: v$("cM"), status: v$("cS"), start: v$("cA"), fee: v$("cF2"), show: $("#cW").checked ? "হ্যাঁ" : "না" });
+    b.disabled = false;
+    if (!r.ok) return showErr(r.error || "সংরক্ষণ হয়নি।");
+    toast("সংরক্ষিত ✅"); sheetClose(); vCr();
+  };
+  if (!n) $("#cDel").onclick = async () => {
+    if (!confirm("কোর্সটি মুছবেন?")) return;
+    const r = await apiPost({ action: "a_course_del", row: x.row, title: x.title });
+    if (!r.ok) return showErr(r.error || "মোছা যায়নি।");
+    toast("মোছা হয়েছে"); sheetClose(); vCr();
+  };
+}
+
+/* ===================== সোপান ধাপ ===================== */
+let STP = { month: "", batch: "", list: [] };
+const STEP_NAMES = ["শুরু", "গতি", "দৃঢ়তা", "দক্ষ", "শিখর"], STEP_COL = ["#6c7a96", "#2b9fd8", "#0f9d76", "#e8590c", "#d99a12"];
+async function vStep(arg) {
+  const month = (typeof arg === "string" && /^\d{4}-\d{2}$/.test(arg)) ? arg : (STP.month || new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 7));
+  const d = await api({ action: "a_step_get", month });
+  if (!d.ok) return failView(d);
+  STP.month = d.month; STP.list = d.list;
+  const batches = Array.from(new Set(d.list.map(x => x.batch || ""))).filter(Boolean);
+  const view = d.list.filter(x => !STP.batch || x.batch === STP.batch);
+  $("#view").innerHTML = `<div class="grid grid-cols-2 gap-3 mb-3">${fld("মাস", `<input id="sM" type="month" class="${inp}" value="${esc(d.month)}">`)}${fld("ব্যাচ", `<select id="sB" class="${inp}"><option value="">সব ব্যাচ</option>${batches.map(b => `<option ${b === STP.batch ? "selected" : ""}>${esc(b)}</option>`).join("")}</select>`)}</div>
+    <p class="text-xs text-slate-500 mb-3 leading-relaxed">শুরুর নম্বর (%) একবার বসালেই পরের মাসেও থাকবে। এ মাসের নম্বর (%) বসান। উপস্থিতি নিজে থেকে আসে (উপস্থিতি খাতা থেকে)। উন্নতি = এ মাসের নম্বর − শুরুর নম্বর (+৫ যদি উপস্থিতি ৮০%-এর বেশি)। ১০→ধাপ ২, ২০→ধাপ ৩, ৩০→ধাপ ৪, ৪০→ধাপ ৫।</p>`
+    + (view.length ? view.map((x, i) => `<div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 mb-3" data-r="${esc(x.roll)}">
+        <div class="flex items-center justify-between gap-2"><p class="font-semibold truncate">${esc(x.name || "—")} <span class="text-xs text-slate-500">${esc(x.roll)}</span></p>${x.step ? `<span class="shrink-0 text-xs px-2 py-1 rounded-full text-white font-semibold" style="background:${STEP_COL[x.step - 1]}">ধাপ ${bn(x.step)} • ${STEP_NAMES[x.step - 1]}</span>` : '<span class="text-xs text-slate-400">ধাপ বাকি</span>'}</div>
+        <div class="grid grid-cols-2 gap-2 mt-2"><label class="text-xs text-slate-500">শুরুর নম্বর %<input data-f="base" inputmode="decimal" class="${inp} mt-1" value="${x.base == null ? "" : x.base}"></label><label class="text-xs text-slate-500">এ মাসের নম্বর %<input data-f="score" inputmode="decimal" class="${inp} mt-1" value="${x.score == null ? "" : x.score}"></label></div>
+        <p class="text-xs text-slate-500 mt-2">${x.batch ? esc(x.batch) + " • " : ""}উপস্থিতি: ${x.att == null ? "—" : bn(x.att) + "%"}${x.imp == null ? "" : " • উন্নতি: " + bn(x.imp) + "%"}</p></div>`).join("") + `<button id="sSave" type="button" class="${btnP} w-full sticky bottom-20">💾 সব সংরক্ষণ করুন</button>`
+      : '<p class="text-center text-slate-500 py-8">কোনো ভর্তিকৃত শিক্ষার্থী পাওয়া যায়নি। আগে "শিক্ষার্থী" ট্যাবে ভর্তি ও রোল দিন।</p>');
+  $("#sM").onchange = e => { STP.month = e.target.value; vStep(e.target.value); };
+  $("#sB").onchange = e => { STP.batch = e.target.value; vStep(STP.month); };
+  const sv = $("#sSave");
+  if (sv) sv.onclick = async () => {
+    const rows = Array.from(document.querySelectorAll("#view [data-r]")).map(c => ({ roll: c.dataset.r, base: c.querySelector('[data-f=base]').value.trim(), score: c.querySelector('[data-f=score]').value.trim() })).filter(r => r.base !== "" || r.score !== "");
+    if (!rows.length) return toast("কোনো নম্বর বসানো হয়নি।", true);
+    sv.disabled = true;
+    const r = await apiPost({ action: "a_step_save", month: STP.month, rows });
+    sv.disabled = false;
+    if (!r.ok) return toast(r.error || "সংরক্ষণ হয়নি।", true);
+    toast(bn(r.saved) + " জনের ধাপ সংরক্ষিত ✅"); vStep(STP.month);
+  };
+}
 
 /* ===================== টোকেন ===================== */
 let TKD = null, tkQ = "";
