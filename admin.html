@@ -486,24 +486,73 @@ const CLS_HINT = ["সকল শ্রেণি", "প্রথম শ্রে�
 const clsList = `<datalist id="clsl">${CLS_HINT.map(c => `<option value="${esc(c)}">`).join("")}</datalist>`;
 
 /* ===================== পরীক্ষা ===================== */
-let EX = [];
+let EX = [], EXQ = "";
+const EXOPEN = {};
+const MN = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"];
+const exMonth = x => String(x.start || "").slice(0, 7);
+const monthLabel = ym => /^\d{4}-(0[1-9]|1[0-2])$/.test(ym) ? MN[+ym.slice(5) - 1] + " " + bn(ym.slice(0, 4)) : "তারিখ নেই";
+const exMs = t => new Date(t + "+06:00").getTime();
+function exCard(x, i, now) {
+  const s = exMs(x.start), e = exMs(x.end);
+  const st = x.archived ? ["আর্কাইভ", "bg-slate-200 text-slate-600"] : !x.show ? ["লুকানো", "bg-slate-200 text-slate-700"] : now < s ? ["আসছে", "bg-sky-100 text-sky-800"] : now > e ? ["শেষ", "bg-slate-100 text-slate-600"] : ["চলছে", "bg-emerald-100 text-emerald-800"];
+  return `<div class="bg-white rounded-xl border border-slate-200 p-3 mb-2">
+    <div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="font-semibold leading-snug">${esc(x.title)}</p><p class="text-xs text-slate-500">${bn(x.dur)} মিনিট${x.paid ? " • পেইড " + bn(x.fee) + " টোকেন" : " • ফ্রি"} • ${esc(x.start.replace("T", " "))}</p></div><span class="shrink-0 text-xs px-2 py-0.5 rounded-full font-semibold ${st[1]}">${st[0]}</span></div>
+    <p class="text-xs text-slate-500 mt-1">প্রশ্ন <b>${bn(x.qcount)}</b> • অংশগ্রহণ <b>${bn(x.attempts)}</b></p>
+    <div class="grid grid-cols-3 gap-2 mt-2"><button type="button" data-q="${i}" class="${btnP} !py-2 !px-2 text-sm">প্রশ্ন</button><button type="button" data-e="${i}" class="${btnS}">✏ সম্পাদনা</button>${x.archived ? `<button type="button" data-ar="${i}" class="${btnS} !border-emerald-300 !text-emerald-800">↩ ফেরান</button>` : `<button type="button" data-ar="${i}" class="${btnS}">🗄 আর্কাইভ</button>`}</div></div>`;
+}
+// শ্রেণি → মাস অনুযায়ী ভাঁজকরা তালিকা
+function exGroups(list, tag, now, searching) {
+  const byC = {};
+  list.forEach(({ x, i }) => { const c = x.cls || "শ্রেণি নেই", m = exMonth(x); ((byC[c] = byC[c] || {})[m] = byC[c][m] || []).push({ x, i }); });
+  const latest = o => Math.max.apply(null, Object.values(o).flat().map(z => exMs(z.x.start) || 0));
+  const classes = Object.keys(byC).sort((a, b) => latest(byC[b]) - latest(byC[a]));
+  const live = arr => arr.some(z => !z.x.archived && z.x.show && exMs(z.x.end) >= now);
+  let first = true;
+  return classes.map(c => {
+    const months = Object.keys(byC[c]).sort().reverse(), all = months.flatMap(m => byC[c][m]), kc = tag + "|" + c;
+    const openC = searching || (kc in EXOPEN ? EXOPEN[kc] : (live(all) || (first && tag === "a")));
+    first = false;
+    return `<details data-k="${esc(kc)}" class="mb-3 rounded-2xl border border-slate-200 bg-slate-50/60" ${openC ? "open" : ""}><summary class="cursor-pointer select-none px-4 py-3 font-bold text-brand-800 flex items-center justify-between gap-2"><span>🎓 ${esc(c)}</span><span class="text-xs font-medium text-slate-500">${bn(all.length)}টি</span></summary><div class="px-3 pb-2">`
+      + months.map((m, mi) => {
+        const km = kc + "|" + m, arr = byC[c][m].sort((a, b) => (exMs(b.x.start) || 0) - (exMs(a.x.start) || 0));
+        const openM = searching || (km in EXOPEN ? EXOPEN[km] : (live(arr) || (mi === 0 && openC && !live(all))));
+        return `<details data-k="${esc(km)}" class="mb-2" ${openM ? "open" : ""}><summary class="cursor-pointer select-none py-2 px-1 text-sm font-semibold text-slate-700 flex items-center justify-between"><span>📅 ${esc(monthLabel(m))}</span><span class="text-xs font-medium text-slate-500">${bn(arr.length)}টি</span></summary><div>${arr.map(z => exCard(z.x, z.i, now)).join("")}</div></details>`;
+      }).join("") + `</div></details>`;
+  }).join("");
+}
+function exRender() {
+  const q = EXQ.trim().toLowerCase(), now = Date.now();
+  const match = x => !q || [x.title, x.cls, x.id, monthLabel(exMonth(x)), exMonth(x)].some(t => String(t || "").toLowerCase().includes(q));
+  const items = EX.map((x, i) => ({ x, i })).filter(z => match(z.x));
+  const act = items.filter(z => !z.x.archived), arc = items.filter(z => z.x.archived);
+  const totalArc = EX.filter(x => x.archived).length;
+  $("#exCount").textContent = q ? `${bn(items.length)}টি পাওয়া গেছে` : `${bn(EX.length - totalArc)}টি চালু • ${bn(totalArc)}টি আর্কাইভে`;
+  let h = act.length ? exGroups(act, "a", now, !!q) : card(`<p class="text-center text-slate-500 py-6">${q ? "কিছু পাওয়া যায়নি।" : "এখনো কোনো পরীক্ষা নেই।"}</p>`);
+  if (totalArc) h += `<details data-k="arcAll" class="mt-4 rounded-2xl border border-dashed border-slate-300" ${q && arc.length || EXOPEN.arcAll ? "open" : ""}><summary class="cursor-pointer select-none px-4 py-3 font-bold text-slate-600">🗄 আর্কাইভ (${bn(totalArc)})</summary><div class="px-3 pb-3">${arc.length ? exGroups(arc, "r", now, !!q) : '<p class="text-sm text-slate-500 px-1 pb-2">কিছু পাওয়া যায়নি।</p>'}</div></details>`;
+  $("#exList").innerHTML = h;
+}
 async function vExams() {
   const d = await api({ action: "a_exam_list" });
   if (!d.ok) return failView(d);
   EX = d.list;
-  const now = Date.now();
-  $("#view").innerHTML = `<button id="exNew" type="button" class="${btnP} w-full mb-4">➕ নতুন পরীক্ষা</button>` + (EX.length ? EX.map((x, i) => {
-    const s = new Date(x.start + "+06:00").getTime(), e = new Date(x.end + "+06:00").getTime();
-    const st = !x.show ? ["লুকানো", "bg-slate-200 text-slate-700"] : now < s ? ["আসছে", "bg-sky-100 text-sky-800"] : now > e ? ["শেষ", "bg-slate-100 text-slate-600"] : ["চলছে", "bg-emerald-100 text-emerald-800"];
-    return card(`<div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="font-semibold">${esc(x.title)}</p><p class="text-xs text-slate-500">${esc(x.cls)} • ${bn(x.dur)} মিনিট • ${x.paid ? "পেইড " + money(x.fee) : "ফ্রি"}</p></div><span class="shrink-0 text-xs px-2 py-1 rounded-full ${st[1]}">${st[0]}</span></div>
-      <p class="text-xs text-slate-500 mt-2">${esc(x.start.replace("T", " "))} → ${esc(x.end.replace("T", " "))}</p>
-      <p class="text-sm mt-2">প্রশ্ন: <b>${bn(x.qcount)}</b> • অংশগ্রহণ: <b>${bn(x.attempts)}</b></p>
-      <div class="grid grid-cols-2 gap-2 mt-3"><button type="button" data-q="${i}" class="${btnP}">প্রশ্ন (${bn(x.qcount)})</button><button type="button" data-e="${i}" class="${btnS}">✏ সম্পাদনা</button></div>`);
-  }).join("") : card('<p class="text-center text-slate-500 py-6">এখনো কোনো পরীক্ষা নেই।</p>'));
+  $("#view").innerHTML = `<button id="exNew" type="button" class="${btnP} w-full mb-3">➕ নতুন পরীক্ষা</button>
+    <div class="relative mb-1"><input id="exSearch" type="search" class="${inp} pr-10" placeholder="🔎 পরীক্ষা খুঁজুন (নাম, শ্রেণি, মাস)" value="${esc(EXQ)}" aria-label="পরীক্ষা খুঁজুন"></div>
+    <p id="exCount" class="text-xs text-slate-500 mb-3 px-1"></p><div id="exList"></div>`;
+  exRender();
   $("#exNew").onclick = () => exForm(null);
-  $("#view").onclick = e => {
-    const q = e.target.closest("[data-q]"), ed = e.target.closest("[data-e]");
+  $("#exSearch").oninput = e => { EXQ = e.target.value; exRender(); };
+  $("#exList").addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.k; if (k) EXOPEN[k] = e.target.open; }, true);
+  $("#view").onclick = async e => {
+    const q = e.target.closest("[data-q]"), ed = e.target.closest("[data-e]"), ar = e.target.closest("[data-ar]");
     if (q) go("qs", EX[+q.dataset.q]); else if (ed) exForm(EX[+ed.dataset.e]);
+    else if (ar) {
+      const x = EX[+ar.dataset.ar], to = !x.archived;
+      if (to && !confirm(`"${x.title}" আর্কাইভে সরাবেন?\nসাইট থেকে সরে যাবে; প্রশ্ন ও ফলাফল অক্ষত থাকবে। যেকোনো সময় ফিরিয়ে আনা যাবে।`)) return;
+      ar.disabled = true;
+      const r = await apiPost({ action: "a_exam_archive", id: x.id, archive: to ? "1" : "0" });
+      if (!r.ok) { ar.disabled = false; return toast(r.error || "হয়নি।", true); }
+      x.archived = to; toast(to ? "আর্কাইভে গেছে 🗄" : "ফিরে এসেছে ↩ (লুকানো অবস্থায়, চাইলে 'সাইটে দেখান' চালু করুন)"); exRender();
+    }
   };
 }
 function exForm(x) {
@@ -540,22 +589,50 @@ function exForm(x) {
 }
 
 /* ===================== প্রশ্ন ===================== */
-let QX = null, QL = [];
+let QX = null, QL = [], QQ = "";
 async function vQs(ex) {
+  if (ex && (!QX || ex.id !== QX.id)) QQ = "";
   QX = ex || QX;
   const d = await api({ action: "a_q_list", exam: QX.id });
   if (!d.ok) return failView(d);
-  QL = d.list; qsRender();
+  QL = d.list; qsRender(true);
 }
-function qsRender() {
-  const L = ["ক", "খ", "গ", "ঘ"];
-  $("#view").innerHTML = `<div class="flex items-center justify-between gap-2 mb-3"><div class="min-w-0"><p class="font-bold text-brand-800 truncate">${esc(QX.title)}</p><p class="text-xs text-slate-500">${bn(QL.length)}টি প্রশ্ন</p></div><button type="button" id="qBack" class="${btnS} shrink-0">← পরীক্ষা</button></div>
-    <div class="grid grid-cols-2 gap-2 mb-4"><button id="qNew" type="button" class="${btnP}">➕ নতুন প্রশ্ন</button><button id="qBulk" type="button" class="${btnS} py-2.5">📥 একসাথে অনেক</button></div>`
-    + (QL.length ? QL.map((q, i) => card(`<button type="button" data-qi="${i}" class="w-full text-left"><p class="text-sm"><b>${bn(i + 1)}.</b> ${esc(q.q.slice(0, 140))}${q.q.length > 140 ? "…" : ""}</p><p class="text-xs text-emerald-700 mt-1">✔ উত্তর: ${esc(q.ans || "?")}${q.img ? " • 🖼 ছবি আছে" : ""}</p></button>`, "!mb-2")).join("") : card('<p class="text-center text-slate-500 py-6">এখনো কোনো প্রশ্ন নেই। ওপরের বোতামে চাপুন।</p>'));
+async function qMove(i, to) {
+  const r = await apiPost({ action: "a_q_move", exam: QX.id, row: QL[i].row, to });
+  if (!r.ok) { toast(r.error || "সরানো যায়নি।", true); if (r.code === "stale") vQs(); return; }
+  QL = r.list; qsListRender();
+}
+function qsListRender() {
+  const q = QQ.trim().toLowerCase(), n = QL.length;
+  const rows = QL.map((x, i) => ({ x, i })).filter(z => !q || [z.x.q, z.x.a, z.x.b, z.x.c, z.x.d, z.x.exp, String(z.i + 1), bn(z.i + 1)].some(t => String(t || "").toLowerCase().includes(q)));
+  $("#qCount").textContent = q ? `${bn(rows.length)}টি পাওয়া গেছে (মোট ${bn(n)})` : `${bn(n)}টি প্রশ্ন`;
+  $("#qList").innerHTML = rows.length ? rows.map(({ x, i }) => `<div class="bg-white rounded-xl border border-slate-200 p-3 mb-2 flex items-stretch gap-2">
+      <button type="button" data-qi="${i}" class="flex-1 min-w-0 text-left"><p class="text-sm"><b>${bn(i + 1)}.</b> ${esc(x.q.slice(0, 140))}${x.q.length > 140 ? "…" : ""}</p><p class="text-xs text-emerald-700 mt-1">✔ উত্তর: ${esc(x.ans || "?")}${x.img ? " • 🖼 ছবি আছে" : ""}</p></button>
+      <div class="shrink-0 grid grid-cols-3 gap-1 content-center"><button type="button" data-up="${i}" aria-label="ওপরে সরান" class="w-9 h-9 rounded-lg border border-slate-300 bg-white disabled:opacity-30" ${i === 0 ? "disabled" : ""}>▲</button><button type="button" data-dn="${i}" aria-label="নিচে সরান" class="w-9 h-9 rounded-lg border border-slate-300 bg-white disabled:opacity-30" ${i === n - 1 ? "disabled" : ""}>▼</button><button type="button" data-to="${i}" aria-label="নম্বরে সরান" class="w-9 h-9 rounded-lg border border-slate-300 bg-white text-xs font-bold">#</button></div></div>`).join("")
+    : card(`<p class="text-center text-slate-500 py-6">${q ? "কিছু পাওয়া যায়নি।" : "এখনো কোনো প্রশ্ন নেই। ওপরের বোতামে চাপুন।"}</p>`);
+}
+function qsRender(fresh) {
+  $("#view").innerHTML = `<div class="flex items-center justify-between gap-2 mb-3"><div class="min-w-0"><p class="font-bold text-brand-800 truncate">${esc(QX.title)}</p><p id="qCount" class="text-xs text-slate-500"></p></div><button type="button" id="qBack" class="${btnS} shrink-0">← পরীক্ষা</button></div>
+    <div class="grid grid-cols-2 gap-2 mb-3"><button id="qNew" type="button" class="${btnP}">➕ নতুন প্রশ্ন</button><button id="qBulk" type="button" class="${btnS} py-2.5">📥 একসাথে অনেক</button></div>
+    <input id="qSearch" type="search" class="${inp} mb-3" placeholder="🔎 প্রশ্ন খুঁজুন (লেখা বা নম্বর)" value="${esc(QQ)}" aria-label="প্রশ্ন খুঁজুন"><div id="qList"></div>`;
+  qsListRender();
   $("#qBack").onclick = () => go("exm");
   $("#qNew").onclick = () => qForm(null);
   $("#qBulk").onclick = qBulk;
-  $("#view").onclick = e => { const b = e.target.closest("[data-qi]"); if (b) qForm(QL[+b.dataset.qi]); };
+  $("#qSearch").oninput = e => { QQ = e.target.value; qsListRender(); };
+  $("#view").onclick = e => {
+    const b = e.target.closest("[data-qi]"), up = e.target.closest("[data-up]"), dn = e.target.closest("[data-dn]"), to = e.target.closest("[data-to]");
+    if (b) qForm(QL[+b.dataset.qi]);
+    else if (up) qMove(+up.dataset.up, +up.dataset.up);
+    else if (dn) qMove(+dn.dataset.dn, +dn.dataset.dn + 2);
+    else if (to) {
+      const i = +to.dataset.to, v = prompt(`প্রশ্ন ${bn(i + 1)} কত নম্বরে নেবেন? (১ থেকে ${bn(QL.length)})`, String(i + 1));
+      if (v === null) return;
+      const k = parseInt(String(v).replace(/[০-৯]/g, c => "০১২৩৪৫৬৭৮৯".indexOf(c)), 10);
+      if (!(k >= 1)) return toast("সঠিক নম্বর দিন।", true);
+      if (k !== i + 1) qMove(i, k);
+    }
+  };
 }
 function qForm(q) {
   const n = !q; q = q || { q: "", img: "", a: "", b: "", c: "", d: "", ans: "", exp: "", marks: "" };
@@ -606,6 +683,45 @@ function parseQs(text) {
   });
   return out;
 }
+// ---- ফাইল (CSV / Excel) থেকে সারি পড়া ----
+function parseCsv(t) {
+  t = t.replace(/^﻿/, "");
+  const first = t.split("\n")[0] || "", d = (first.match(/\t/g) || []).length > (first.match(/,/g) || []).length ? "\t" : ((first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ";" : ",");
+  const out = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === d) { row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && t[i + 1] === "\n") i++; row.push(cur); out.push(row); row = []; cur = ""; }
+    else cur += c;
+  }
+  if (cur !== "" || row.length) { row.push(cur); out.push(row); }
+  return out;
+}
+function loadSheetJS() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((ok, no) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; s.onload = ok; s.onerror = () => no(new Error("Excel পড়ার টুল লোড হয়নি (ইন্টারনেট দেখুন)। বিকল্প: ফাইলটি CSV করে দিন।")); document.head.appendChild(s); });
+}
+async function fileRows(f) {
+  if (f.size > 3e6) throw new Error("ফাইল বেশি বড় (৩ MB-এর কম হতে হবে)।");
+  if (/\.xlsx?$/i.test(f.name)) {
+    await loadSheetJS();
+    const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+  }
+  return parseCsv(new TextDecoder("utf-8").decode(await f.arrayBuffer()));
+}
+function rowsToText(rows) {
+  const clean = v => String(v == null ? "" : v).replace(/\s*[\r\n]+\s*/g, " ").trim(), L = ["ক", "খ", "গ", "ঘ"];
+  rows = rows.map(r => r.map(clean)).filter(r => r.some(Boolean));
+  if (rows.length && /^(প্রশ্ন|question|q\.?|no\.?)$/i.test(rows[0][0])) rows.shift();
+  return rows.slice(0, 300).filter(r => r[0]).map(r => {
+    let a = (r[5] || "").trim(); const k = a.replace(/[১-৪]/g, c => "০১২৩৪".indexOf(c));
+    if (/^[1-4]$/.test(k)) a = L[+k - 1];
+    return [r[0].replace(/^[\d০-৯]+\s*[\.\)।]\s*/, ""), "ক) " + (r[1] || ""), "খ) " + (r[2] || ""), "গ) " + (r[3] || ""), "ঘ) " + (r[4] || ""), "উত্তর: " + a, r[6] ? "ব্যাখ্যা: " + r[6] : ""].filter(Boolean).join("\n");
+  }).join("\n\n");
+}
 function qBulk() {
   sheet(`<p class="font-bold text-lg text-brand-800 mb-1">একসাথে অনেক প্রশ্ন</p>
     <p class="text-xs text-slate-600 mb-3">নিচের মতো করে লিখুন বা পেস্ট করুন। <b>দুই প্রশ্নের মাঝে একটি ফাঁকা লাইন</b> দিন।</p>
@@ -616,9 +732,27 @@ function qBulk() {
 ঘ) সিলেট
 উত্তর: ক
 ব্যাখ্যা: ঢাকা রাজধানী।</pre>
+    <div class="rounded-xl border border-dashed border-brand-300 bg-brand-50/50 p-3 mb-3">
+      <p class="text-sm font-semibold text-brand-800 mb-1">📄 Excel বা CSV ফাইল থেকে</p>
+      <p class="text-xs text-slate-600 mb-2">কলামের ক্রম: <b>প্রশ্ন, ক, খ, গ, ঘ, সঠিক উত্তর, ব্যাখ্যা</b> (প্রথম সারি শিরোনাম হলে বাদ যাবে)। ফাইল বাছলে নিচের ঘরে সাজিয়ে দেখাবে — দেখে নিয়ে "যোগ করুন" চাপুন। একবারে সর্বোচ্চ ৩০০টি।</p>
+      <input id="bF" type="file" accept=".csv,.txt,.xlsx,.xls" class="block w-full text-sm mb-2">
+      <button id="bSample" type="button" class="${btnS}">⬇ নমুনা CSV নামান</button>
+    </div>
     <textarea id="bT" rows="10" class="${inp}" placeholder="এখানে পেস্ট করুন…"></textarea>
     <p id="bInfo" class="text-sm text-slate-600 mt-2"></p>${errBox()}
     <button id="bGo" type="button" class="${btnP} w-full mt-3">যোগ করুন</button>`);
+  $("#bSample").onclick = () => {
+    const csv = "\ufeffপ্রশ্ন,ক,খ,গ,ঘ,সঠিক উত্তর,ব্যাখ্যা\n\"বাংলাদেশের রাজধানী কোনটি?\",ঢাকা,খুলনা,রাজশাহী,সিলেট,ক,ঢাকা রাজধানী।\n\"৩ + ৫ = কত?\",৭,৮,৯,১০,খ,\n";
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = "questions-sample.csv"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  $("#bF").onchange = async ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    try {
+      const rows = await fileRows(f), txt = rowsToText(rows);
+      if (!txt) return showErr("ফাইলে কোনো প্রশ্ন পাওয়া যায়নি। কলামের ক্রম মিলিয়ে দেখুন।");
+      $("#bT").value = txt; $("#bT").oninput(); $("#fErr") && $("#fErr").classList.add("hidden");
+    } catch (e) { showErr(e && e.message || "ফাইল পড়া যায়নি।"); }
+  };
   $("#bT").oninput = () => { const n = parseQs($("#bT").value).filter(r => r[0]).length; $("#bInfo").textContent = n ? `${bn(n)}টি প্রশ্ন পাওয়া গেছে।` : ""; };
   $("#bGo").onclick = async () => {
     const rows = parseQs($("#bT").value).filter(r => r[0]);
