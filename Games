@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>খেলে শেখো — সময় সোপান</title>
+<meta name="description" content="সময় সোপানের শিক্ষামূলক ছোট গেমস — সোপান বেয়ে ওঠো, দ্রুত হিসাব, শব্দ ধাঁধা, মেমোরি কার্ড ও আজকের চ্যালেঞ্জ।">
+<meta name="theme-color" content="#141f85">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --navy: #141f85; --navy2: #1b2aa6; --navy3: #0c1458; --gold: #f0b000; --gold2: #f9cf3d; --ink: #1e293b; --mut: #64748b; --line: #e2e8f0; --bg: #f5f6fd; --ok: #15803d; --bad: #b91c1c; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: 'Hind Siliguri', system-ui, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.55; }
+  .ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; display: inline-block; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  header { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 1px solid var(--line); }
+  .hd { max-width: 560px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .hd img { width: 38px; height: 38px; border-radius: 8px; }
+  .hd b { color: var(--navy); font-size: 18px; display: block; line-height: 1.1; }
+  .hd small { color: var(--mut); font-size: 11px; }
+  .hd a.back { margin-left: auto; color: var(--navy2); font-weight: 600; font-size: 14px; text-decoration: none; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); white-space: nowrap; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 90px; }
+  h1, h2, h3 { margin: 0; color: var(--navy); }
+  .hero { background: linear-gradient(135deg, var(--navy3), var(--navy2) 60%, #2a3bbd); color: #fff; border-radius: 22px; padding: 20px; position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(249,207,61,.45), transparent 65%); }
+  .hero h1 { color: #fff; font-size: 26px; }
+  .hero p { margin: 6px 0 0; color: #dbe2ff; font-size: 14px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .chip { border: 1px solid rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.1); padding: 7px 12px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; }
+  .chip.on { background: var(--gold); border-color: var(--gold); color: #3b2a00; font-weight: 700; }
+  .stat { display: flex; gap: 10px; margin: 14px 0; }
+  .stat div { flex: 1; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px; text-align: center; font-size: 12px; color: var(--mut); }
+  .stat b { display: block; font-size: 20px; color: var(--navy); }
+  .games { display: grid; gap: 12px; }
+  .g { display: flex; gap: 14px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px; text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+  .g:active { transform: scale(.985); }
+  .g .bx { width: 52px; height: 52px; border-radius: 14px; background: #eef1fd; color: var(--navy2); display: grid; place-items: center; font-size: 28px; flex-shrink: 0; }
+  .g b { color: var(--navy); font-size: 17px; display: block; }
+  .g span.s { color: var(--mut); font-size: 13px; }
+  .g em { margin-left: auto; font-style: normal; font-size: 11px; color: #92400e; background: #fef3c7; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+  .g.today .bx { background: #fff7e0; color: #b45309; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-top: 12px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 14px; border: 0; font: inherit; font-weight: 700; font-size: 16px; cursor: pointer; background: var(--navy2); color: #fff; text-decoration: none; }
+  .btn.gold { background: var(--gold); color: #3b2a00; }
+  .btn.ghost { background: #fff; color: var(--navy2); border: 1px solid #c7d0f5; }
+  .btn.block { display: flex; width: 100%; margin-top: 10px; }
+  .btn.sm { min-height: 38px; padding: 0 12px; font-size: 14px; border-radius: 10px; }
+  .q { font-size: 19px; font-weight: 600; color: var(--ink); margin: 6px 0 14px; }
+  .tag { display: inline-block; font-size: 12px; color: var(--navy2); background: #eef1fd; padding: 2px 10px; border-radius: 999px; }
+  .opts { display: grid; gap: 10px; }
+  .opt { min-height: 52px; padding: 10px 14px; text-align: left; font: inherit; font-size: 17px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  .opt:active { transform: scale(.985); }
+  .opt.ok { border-color: var(--ok); background: #f0fdf4; color: #14532d; }
+  .opt.no { border-color: var(--bad); background: #fef2f2; color: #7f1d1d; animation: shake .35s; }
+  .opts.two { grid-template-columns: 1fr 1fr; }
+  .opts.two .opt { text-align: center; font-size: 22px; }
+  .note { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: #eef1fd; font-size: 14px; color: #1e2a78; }
+  .bar { height: 8px; background: #e5e7f5; border-radius: 99px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); transition: width .25s linear; }
+  .stairs { display: flex; align-items: flex-end; gap: 3px; height: 150px; padding: 0 2px; }
+  .stairs .st { flex: 1; position: relative; background: #dde3fa; border-radius: 5px 5px 0 0; transition: background .3s; }
+  .stairs .st.on { background: linear-gradient(180deg, var(--navy2), var(--navy)); }
+  .stairs .st.top { background: linear-gradient(180deg, var(--gold2), var(--gold)); }
+  .me { color: #3b2a00; position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: #3b2a00; display: grid; place-items: center; font-size: 17px; box-shadow: 0 2px 6px rgba(0,0,0,.25); animation: hop .5s ease; z-index: 2; margin-bottom: 3px; }
+  .goal { position: absolute; right: 2px; top: -2px; color: var(--gold); font-size: 20px; }
+  .big { text-align: center; padding: 10px 0; }
+  .big .n { font-size: 56px; font-weight: 700; color: var(--navy); line-height: 1.1; }
+  .big p { margin: 4px 0; color: var(--mut); }
+  .timer { font-size: 22px; font-weight: 700; color: var(--navy); }
+  .timer.low { color: var(--bad); }
+  .eq { text-align: center; font-size: 40px; font-weight: 700; color: var(--navy); margin: 14px 0 16px; letter-spacing: 1px; }
+  .slots, .tiles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 12px 0; }
+  .slot { width: 42px; height: 50px; border-radius: 10px; border: 2px dashed #b7c0ee; display: grid; place-items: center; font-size: 24px; font-weight: 700; color: var(--navy); text-transform: uppercase; background: #fff; }
+  .slot.f { border-style: solid; border-color: var(--navy2); background: #eef1fd; }
+  .slot.hint { border-color: var(--gold); background: #fff7e0; }
+  .tile { width: 46px; height: 54px; border-radius: 12px; border: 0; background: var(--navy2); color: #fff; font: inherit; font-size: 24px; font-weight: 700; text-transform: uppercase; cursor: pointer; box-shadow: 0 3px 0 var(--navy3); }
+  .tile:disabled { opacity: .25; box-shadow: none; }
+  .meaning { text-align: center; font-size: 20px; font-weight: 600; margin: 6px 0; }
+  .mem { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .c { aspect-ratio: 1 / 1.05; perspective: 600px; border: 0; padding: 0; background: none; cursor: pointer; font: inherit; }
+  .c .in { display: block; position: relative; width: 100%; height: 100%; transition: transform .35s; transform-style: preserve-3d; }
+  .c.f .in, .c.m .in { transform: rotateY(180deg); }
+  .c .fr, .c .bk { position: absolute; inset: 0; border-radius: 14px; display: grid; place-items: center; backface-visibility: hidden; text-align: center; padding: 4px; }
+  .c .fr { background: linear-gradient(135deg, var(--navy2), var(--navy3)); color: var(--gold2); font-size: 30px; }
+  .c .bk { background: #fff; border: 2px solid #c7d0f5; transform: rotateY(180deg); font-size: 19px; font-weight: 700; color: var(--navy); line-height: 1.2; }
+  .c.m .bk { background: #f0fdf4; border-color: var(--ok); color: #14532d; }
+  .c .fr .ic { font-size: 34px; } .c .fr path { fill: #f9cf3d; }
+  .stars { font-size: 34px; color: var(--gold); letter-spacing: 4px; }
+  .sub { color: var(--mut); font-size: 14px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .foot { text-align: center; color: var(--mut); font-size: 12px; margin-top: 22px; }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  @keyframes hop { 0% { transform: translate(-50%, 14px) scale(.7); } 60% { transform: translate(-50%, -6px) scale(1.1); } 100% { transform: translate(-50%, 0) scale(1); } }
+  @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+  .pop { animation: pop .45s ease; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><symbol id="i-cap" viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/><path d="M22 9v6" stroke="#f0b000"/></symbol><symbol id="i-school" viewBox="0 0 24 24"><path d="M3 21V10l9-6 9 6v11z"/><path d="M9.5 21v-5h5v5"/><circle cx="12" cy="10.5" r="1.6" stroke="#f0b000"/></symbol><symbol id="i-laptop" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 20h20"/><path d="M9.5 10.5l2 2 3.5-3.5" stroke="#f0b000"/></symbol><symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" stroke="#f0b000" fill="#f0b000"/></symbol><symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6-4.5-4.2 6.1-.7z" fill="#f0b00055" stroke="#f0b000"/></symbol><symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="M6.2 6.2l2.2 2.2M15.6 15.6l2.2 2.2M17.8 6.2l-2.2 2.2M8.4 15.6l-2.2 2.2" stroke="#f0b000"/></symbol><symbol id="i-checkc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6" stroke="#f0b000" stroke-width="2.2"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol><symbol id="i-crossc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6" stroke="#f0b000" stroke-width="2.2"/></symbol><symbol id="i-minus" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol><symbol id="i-books" viewBox="0 0 24 24"><path d="M4 4h4.5v16H4zM10.5 4H15v16h-4.5z"/><path d="M17 6.5l3.6-1 2 14.6-3.8.9z" stroke="#f0b000"/></symbol><symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2z"/><path d="M12 6v14" stroke="#f0b000"/></symbol><symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5" stroke="#f0b000"/></symbol><symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/><path d="M15 4a5 5 0 015 5" stroke="#f0b000"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke="#f0b000"/></symbol><symbol id="i-mobile" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.5 18.5h3" stroke="#f0b000"/></symbol><symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3" stroke="#f0b000"/></symbol><symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4"/><path d="M3.5 10.5h17" stroke="#f0b000"/></symbol><symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/><path d="M8.5 9.5v5l4-2.5z" fill="#f0b000" stroke="#f0b000"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17v-6a6 6 0 0112 0v6l1.5 2h-15z"/><path d="M10 21.5a2 2 0 004 0" stroke="#f0b000"/></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.2" stroke="#f0b000"/></symbol><symbol id="i-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M6 15.5h4"/><path d="M2.5 10h19" stroke="#f0b000"/></symbol><symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z"/><path d="M9 8h6M9 12h6" stroke="#f0b000"/></symbol><symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 017.5-2"/><circle cx="12" cy="16" r="1.3" stroke="#f0b000" fill="#f0b000"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 018 0v3"/><circle cx="12" cy="16" r="1.3" stroke="#f0b000" fill="#f0b000"/></symbol><symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4" stroke="#f0b000"/><path d="M17.5 14c2.5.3 4 2 4 4.5" stroke="#f0b000"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c0-4 3.3-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/></symbol><symbol id="i-teacher" viewBox="0 0 24 24"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 20c0-3.3 2.7-5.5 6-5.5"/><rect x="12.5" y="9.5" width="9" height="6.5" rx="1" stroke="#f0b000"/><path d="M17 16v4M14.5 20h5" stroke="#f0b000"/></symbol><symbol id="i-brain" viewBox="0 0 24 24"><path d="M9 4a3 3 0 00-3 3 3 3 0 00-2 5 3 3 0 002 4.5A3 3 0 009 20h3V4zM15 4a3 3 0 013 3 3 3 0 012 5 3 3 0 01-2 4.5A3 3 0 0115 20h-3"/><path d="M9 9.5h3M12 14h3" stroke="#f0b000"/></symbol><symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7.5l8.5 6 8.5-6" stroke="#f0b000"/></symbol><symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4M12 17v.01" stroke="#f0b000" stroke-width="2"/></symbol><symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 17.5h6M10 20.5h4"/><path d="M12 3a6 6 0 00-3.5 10.8c.6.5 1 1.2 1 2v.7h5v-.7c0-.8.4-1.5 1-2A6 6 0 0012 3z"/><path d="M12 7a3 3 0 00-2 2.5" stroke="#f0b000"/></symbol><symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="17" rx="2.5"/><path d="M9 13h6M9 17h4"/><rect x="9" y="2.5" width="6" height="4" rx="1.2" stroke="#f0b000"/></symbol><symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3.5H6A1.5 1.5 0 004.5 5v14A1.5 1.5 0 006 20.5h12a1.5 1.5 0 001.5-1.5v-7"/><path d="M8 9h4M8 13h3"/><path d="M19.6 3.2l-8 8-.9 3 3-.9 8-8z" stroke="#f0b000"/></symbol><symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M3 10v4h4l7 4V6L7 10z"/><path d="M17.5 9a4 4 0 010 6M19.8 6.5a8 8 0 010 11" stroke="#f0b000"/></symbol><symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H11l-4.5 4v-4H4z"/><path d="M8 9.5h8M8 12.5h5" stroke="#f0b000"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7.5 4h9v5a4.5 4.5 0 01-9 0z"/><path d="M7.5 6H4v1.5a3 3 0 003.5 3M16.5 6H20v1.5a3 3 0 01-3.5 3M12 13.5V17M9.5 17h5M8.5 20.5h7"/><path d="M12 5.8l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.6.8.3-1.7-1.2-1.2 1.7-.2z" fill="#f0b000" stroke="#f0b000" stroke-width="0.8"/></symbol><symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#f0b00033" stroke="#f0b000"/><circle cx="12" cy="12" r="5.6"/><path d="M9.8 10.2h4.4M12 10.2v4.6"/></symbol><symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3.5 8V6.5A2.5 2.5 0 016 4h11v4"/><rect x="3.5" y="8" width="17" height="12" rx="2.5"/><circle cx="16.5" cy="14" r="1.4" stroke="#f0b000" fill="#f0b000"/></symbol><symbol id="i-stairs" viewBox="0 0 24 24"><path d="M3 20.5h4.5V16H12v-4.5h4.5V7H21"/><path d="M5 11.5l3.5-3.5M8.5 8H6M8.5 8v2.5" stroke="#f0b000"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5" stroke="#f0b000"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14.5 8.5l2 2"/><circle cx="8" cy="15" r="1.2" stroke="#f0b000" fill="#f0b000"/></symbol><symbol id="i-gamepad" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 10.5v4M5 12.5h4"/><circle cx="15.5" cy="11.5" r="0.9" stroke="#f0b000" fill="#f0b000"/><circle cx="18" cy="13.8" r="0.9" stroke="#f0b000" fill="#f0b000"/></symbol><symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 01-10 0c0-2 1-3 2-4 .3 1.3 1 2 1.8 2.3C11 8.5 11 5.5 12 3z"/><path d="M12 20a2.4 2.4 0 002.4-2.4c0-1.3-1.2-2-2.4-3.4-1.2 1.4-2.4 2.1-2.4 3.4A2.4 2.4 0 0012 20z" stroke="#f0b000"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z" fill="#f0b00033"/></symbol><symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol><symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.6"/><circle cx="17.5" cy="5.5" r="2.6"/><circle cx="17.5" cy="18.5" r="2.6"/><path d="M8.3 10.8l7-4M8.3 13.2l7 4" stroke="#f0b000"/></symbol><symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 11-2.6-5.9"/><path d="M20 4v4.5h-4.5" stroke="#f0b000"/></symbol><symbol id="i-next" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol><symbol id="i-letters" viewBox="0 0 24 24"><path d="M3.5 18L8 6l4.5 12M5 14h6"/><path d="M15.5 7h5M15.5 12h5M15.5 17h5" stroke="#f0b000"/></symbol><symbol id="i-cards" viewBox="0 0 24 24"><rect x="3.5" y="6" width="11" height="14" rx="2"/><rect x="9.5" y="4" width="11" height="14" rx="2" stroke="#f0b000" fill="#f0b00022"/></symbol><symbol id="i-medal" viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="6"/><path d="M8.5 9.5L6.5 3h4l1.5 3.2M15.5 9.5l2-6.5h-4L12 6.2"/><path d="M12 11.8l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z" fill="#f0b000" stroke="#f0b000" stroke-width="0.8"/></symbol><symbol id="i-medal1" viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="6" fill="#f0b000" stroke="#f0b000"/><path d="M8.5 9.5L6.5 3h4l1.5 3.2M15.5 9.5l2-6.5h-4L12 6.2" stroke="#f0b000"/><path d="M10.6 12.9l1.9-1.2v6.1" stroke="#fff" stroke-width="1.6"/></symbol><symbol id="i-medal2" viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="6" fill="#8f9aa8" stroke="#8f9aa8"/><path d="M8.5 9.5L6.5 3h4l1.5 3.2M15.5 9.5l2-6.5h-4L12 6.2" stroke="#8f9aa8"/><path d="M10.2 12.8a1.9 1.9 0 013.6.7c0 1.5-3.5 2.6-3.7 4.3h4" stroke="#fff" stroke-width="1.6"/></symbol><symbol id="i-medal3" viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="6" fill="#b9722d" stroke="#b9722d"/><path d="M8.5 9.5L6.5 3h4l1.5 3.2M15.5 9.5l2-6.5h-4L12 6.2" stroke="#b9722d"/><path d="M10.3 11.8h3.4l-1.8 2.3a2 2 0 11-1.8 2.9" stroke="#fff" stroke-width="1.6"/></symbol></defs></svg>
+<header><div class="hd">
+  <a href="index.html" aria-label="সময় সোপান হোম"><img src="icon-192.png" alt=""></a>
+  <div><b>খেলে শেখো</b><small>সময় সোপান</small></div>
+  <a class="back" href="index.html"><svg class="ic"><use href="#i-back"/></svg> সাইটে ফিরুন</a>
+</div></header>
+<main id="app"></main>
+
+<script>
+"use strict";
+const $ = (s, r) => (r || document).querySelector(s);
+const BN = n => String(n).replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[d]);
+const ic = (n, c) => `<svg class="ic${c ? " " + c : ""}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const LEVELS = { j: "প্রথম–পঞ্চম", m: "ষষ্ঠ–অষ্টম", s: "নবম–দ্বাদশ" };
+
+/* ---- সংরক্ষণ: শুধু এই ফোনেই (কোনো সার্ভারে যায় না) ---- */
+const KEY = "ss_games_v1";
+let S = {};
+try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { S = {}; }
+S.level = LEVELS[S.level] ? S.level : "m"; S.best = S.best || {}; S.streak = S.streak || { last: "", n: 0 }; S.daily = S.daily || {};
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+/* ---- সাহায্যকারী ---- */
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function shuffle(a, r) { r = r || Math.random; a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const pad = n => String(n).padStart(2, "0");
+const dayKey = d => { d = d || new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
+const ri = (a, b, r) => a + Math.floor((r || Math.random)() * (b - a + 1));
+
+/* ---- প্রশ্নভান্ডার: [স্তর, বিষয়, প্রশ্ন, [সঠিক উত্তর, ভুল১, ভুল২, ভুল৩], ব্যাখ্যা] ---- */
+const BANK = [
+  ["j", "গণিত", "৭ × ৮ = কত?", ["৫৬", "৪৮", "৫৪", "৬৩"], "৭ × ৮ = ৫৬ (৭-এর ঘরের নামতা)।"],
+  ["j", "সাধারণ জ্ঞান", "বাংলাদেশের রাজধানীর নাম কী?", ["ঢাকা", "চট্টগ্রাম", "খুলনা", "রাজশাহী"], "বাংলাদেশের রাজধানী ঢাকা।"],
+  ["j", "বিজ্ঞান", "সূর্য কোন দিকে ওঠে?", ["পূর্ব", "পশ্চিম", "উত্তর", "দক্ষিণ"], "সূর্য পূর্ব দিকে ওঠে, পশ্চিম দিকে অস্ত যায়।"],
+  ["j", "গণিত", "১০০ − ৩৭ = কত?", ["৬৩", "৬৭", "৭৩", "৫৩"], "১০০ − ৩৭ = ৬৩।"],
+  ["j", "সাধারণ জ্ঞান", "বাংলাদেশের জাতীয় ফুল কোনটি?", ["শাপলা", "গোলাপ", "বেলি", "জবা"], "জাতীয় ফুল শাপলা।"],
+  ["j", "ইংরেজি", "\"Hot\" এর বিপরীত শব্দ কোনটি?", ["Cold", "Warm", "Big", "Soft"], "Hot-এর বিপরীত Cold।"],
+  ["j", "ইংরেজি", "\"Child\" এর বহুবচন কোনটি?", ["Children", "Childs", "Childes", "Childrens"], "Child → Children (অনিয়মিত বহুবচন)।"],
+  ["j", "সাধারণ জ্ঞান", "বাংলাদেশের জাতীয় পাখি কোনটি?", ["দোয়েল", "কাক", "শালিক", "টিয়া"], "জাতীয় পাখি দোয়েল।"],
+  ["j", "গণিত", "১২ ÷ ৩ = কত?", ["৪", "৩", "৬", "৯"], "৩ × ৪ = ১২, তাই ১২ ÷ ৩ = ৪।"],
+  ["j", "গণিত", "ত্রিভুজের বাহু কয়টি?", ["৩", "৪", "৫", "৬"], "ত্রিভুজের তিনটি বাহু ও তিনটি কোণ।"],
+  ["j", "বিজ্ঞান", "পানির রাসায়নিক সংকেত কোনটি?", ["H2O", "CO2", "O2", "NaCl"], "দুই ভাগ হাইড্রোজেন ও এক ভাগ অক্সিজেন মিলে পানি (H2O)।"],
+  ["j", "সাধারণ জ্ঞান", "বাংলাদেশের জাতীয় পশু কোনটি?", ["রয়েল বেঙ্গল টাইগার", "সিংহ", "হাতি", "হরিণ"], "জাতীয় পশু রয়েল বেঙ্গল টাইগার।"],
+  ["j", "বিজ্ঞান", "নিচের কোনটি ডিম পাড়ে?", ["মুরগি", "গরু", "ছাগল", "বিড়াল"], "মুরগি ডিম পাড়ে; গরু, ছাগল, বিড়াল বাচ্চা প্রসব করে।"],
+  ["j", "ইংরেজি", "\"Apple\" এর বাংলা অর্থ কী?", ["আপেল", "আম", "কলা", "লিচু"], "Apple = আপেল।"],
+  ["j", "গণিত", "এক সপ্তাহে কয়টি দিন?", ["৭", "৫", "৬", "১০"], "এক সপ্তাহে ৭ দিন।"],
+  ["j", "বিজ্ঞান", "আমরা কোন অঙ্গ দিয়ে শ্বাস নিই?", ["ফুসফুস", "হৃৎপিণ্ড", "পাকস্থলী", "যকৃত"], "শ্বাস নেওয়ার প্রধান অঙ্গ ফুসফুস।"],
+
+  ["m", "গণিত", "২০০ এর ১৫% কত?", ["৩০", "১৫", "২০", "৩৫"], "২০০ × ১৫ ÷ ১০০ = ৩০।"],
+  ["m", "গণিত", "√১৪৪ = কত?", ["১২", "১৪", "১৬", "১৩"], "১২ × ১২ = ১৪৪।"],
+  ["m", "ইংরেজি", "\"Go\" এর Past tense কোনটি?", ["Went", "Goed", "Gone", "Going"], "Go → Went (Past), Gone (Past Participle)।"],
+  ["m", "সাধারণ জ্ঞান", "বাংলাদেশের স্বাধীনতা দিবস কবে?", ["২৬ মার্চ", "১৬ ডিসেম্বর", "২১ ফেব্রুয়ারি", "১৭ এপ্রিল"], "২৬ মার্চ স্বাধীনতা দিবস।"],
+  ["m", "গণিত", "ত্রিভুজের তিন কোণের সমষ্টি কত?", ["১৮০°", "৯০°", "২৭০°", "৩৬০°"], "যেকোনো ত্রিভুজের তিন কোণের সমষ্টি ১৮০°।"],
+  ["m", "বিজ্ঞান", "সূর্যের আলোতে উদ্ভিদ যে প্রক্রিয়ায় খাদ্য তৈরি করে, তার নাম কী?", ["সালোকসংশ্লেষণ", "শ্বসন", "প্রস্বেদন", "অভিস্রবণ"], "সালোকসংশ্লেষণে পানি ও কার্বন ডাই-অক্সাইড থেকে সূর্যের আলোয় খাদ্য তৈরি হয়।"],
+  ["m", "সাধারণ জ্ঞান", "বাংলাদেশের বিজয় দিবস কবে?", ["১৬ ডিসেম্বর", "২৬ মার্চ", "২১ ফেব্রুয়ারি", "১৫ আগস্ট"], "১৯৭১ সালের ১৬ ডিসেম্বর আমরা বিজয় অর্জন করি।"],
+  ["m", "গণিত", "বৃত্তের ব্যাসার্ধ ৭ একক হলে পরিধি কত? (π = ২২/৭)", ["৪৪", "২২", "১৫৪", "৪৯"], "পরিধি = ২πr = ২ × ২২/৭ × ৭ = ৪৪।"],
+  ["m", "ইংরেজি", "\"Honest\" এর বিপরীত শব্দ কোনটি?", ["Dishonest", "Unhonest", "Nonhonest", "Inhonest"], "Honest-এর বিপরীত Dishonest।"],
+  ["m", "সাধারণ জ্ঞান", "ভাষা আন্দোলনের চূড়ান্ত পর্ব কত সালে হয়েছিল?", ["১৯৫২", "১৯৭১", "১৯৪৭", "১৯৬৯"], "১৯৫২ সালের ২১ ফেব্রুয়ারি ভাষার জন্য প্রাণ দেন আমাদের ভাষাশহীদরা।"],
+  ["m", "বিজ্ঞান", "সূর্যের সবচেয়ে কাছের গ্রহ কোনটি?", ["বুধ", "শুক্র", "পৃথিবী", "মঙ্গল"], "সূর্যের সবচেয়ে কাছের গ্রহ বুধ।"],
+  ["m", "গণিত", "২x + ৫ = ১৫ হলে x এর মান কত?", ["৫", "১০", "৪", "৭"], "২x = ১০, তাই x = ৫।"],
+  ["m", "বিজ্ঞান", "প্রাপ্তবয়স্ক মানুষের দেহে হাড়ের সংখ্যা কত?", ["২০৬", "২০০", "৩০৬", "১০৬"], "প্রাপ্তবয়স্ক মানুষের দেহে ২০৬টি হাড় থাকে।"],
+  ["m", "ইংরেজি", "নিচের কোনটি Noun?", ["Happiness", "Quickly", "Beautiful", "Slowly"], "Happiness একটি Noun; বাকিগুলো Adverb বা Adjective।"],
+  ["m", "সাধারণ জ্ঞান", "বাংলাদেশের একমাত্র প্রবাল দ্বীপ কোনটি?", ["সেন্টমার্টিন", "সন্দ্বীপ", "ভোলা", "হাতিয়া"], "সেন্টমার্টিন বাংলাদেশের একমাত্র প্রবাল দ্বীপ।"],
+  ["m", "গণিত", "আয়তের দৈর্ঘ্য ৮ সেমি ও প্রস্থ ৫ সেমি হলে ক্ষেত্রফল কত?", ["৪০ বর্গ সেমি", "১৩ বর্গ সেমি", "২৬ বর্গ সেমি", "৩৫ বর্গ সেমি"], "ক্ষেত্রফল = দৈর্ঘ্য × প্রস্থ = ৮ × ৫ = ৪০।"],
+
+  ["s", "গণিত", "x² − ৫x + ৬ = ০ সমীকরণের মূল দুটি কী?", ["২ ও ৩", "১ ও ৬", "−২ ও −৩", "৩ ও −২"], "(x − ২)(x − ৩) = ০, তাই x = ২ অথবা ৩।"],
+  ["s", "গণিত", "sin ৩০° এর মান কত?", ["১/২", "√৩/২", "১", "০"], "sin ৩০° = ১/২।"],
+  ["s", "বিজ্ঞান", "সমুদ্রপৃষ্ঠে বিশুদ্ধ পানির স্ফুটনাঙ্ক কত?", ["১০০°C", "০°C", "৯০°C", "১২০°C"], "সমুদ্রপৃষ্ঠের চাপে বিশুদ্ধ পানি ১০০°C-এ ফোটে।"],
+  ["s", "বিজ্ঞান", "নিউটনের দ্বিতীয় গতিসূত্র অনুযায়ী বল (F) = ?", ["ma", "m/a", "a/m", "m + a"], "F = ma (ভর × ত্বরণ)।"],
+  ["s", "ইংরেজি", "সঠিক বাক্য বেছে নাও: She ___ to school every day.", ["goes", "go", "going", "gone"], "Third person singular subject-এর সাথে Present tense-এ verb + s/es: goes।"],
+  ["s", "গণিত", "১০ ভিত্তিক log ১০০০ = কত?", ["৩", "২", "১০", "১০০"], "১০³ = ১০০০, তাই log ১০০০ = ৩।"],
+  ["s", "বিজ্ঞান", "পর্যায় সারণিতে সোডিয়ামের প্রতীক কোনটি?", ["Na", "So", "S", "Sd"], "সোডিয়ামের প্রতীক Na (ল্যাটিন Natrium থেকে)।"],
+  ["s", "গণিত", "∫ ২x dx = ?", ["x² + C", "২x² + C", "x + C", "২ + C"], "xⁿ-এর যোগজ xⁿ⁺¹/(n+১); ২x-এর যোগজ x² + C।"],
+  ["s", "ইংরেজি", "\"Abundant\" এর সমার্থক শব্দ কোনটি?", ["Plentiful", "Scarce", "Tiny", "Rare"], "Abundant = প্রচুর; Plentiful একই অর্থ বোঝায়।"],
+  ["s", "বিজ্ঞান", "DNA এর পূর্ণরূপ কী?", ["Deoxyribonucleic Acid", "Dinitro Acid", "Deoxyribose Nitrogen Acid", "Double Nucleic Atom"], "DNA = Deoxyribonucleic Acid।"],
+  ["s", "গণিত", "নিচের কোনটি মৌলিক সংখ্যা?", ["১৭", "১৫", "২১", "২৭"], "১৭-কে ১ ও ১৭ ছাড়া আর কোনো সংখ্যা দিয়ে নিঃশেষে ভাগ করা যায় না।"],
+  ["s", "সাধারণ জ্ঞান", "আমাদের মুক্তিযুদ্ধ প্রায় কত মাস স্থায়ী ছিল?", ["৯ মাস", "৬ মাস", "১২ মাস", "১৫ মাস"], "২৬ মার্চ থেকে ১৬ ডিসেম্বর ১৯৭১ — প্রায় ৯ মাস।"],
+  ["s", "বিজ্ঞান", "বিশুদ্ধ পানির pH মান (২৫°C-এ) প্রায় কত?", ["৭", "১", "১৪", "০"], "বিশুদ্ধ পানি নিরপেক্ষ, তাই pH ≈ ৭।"],
+  ["s", "ইংরেজি", "সঠিক বাক্য বেছে নাও: Neither of the boys ___ present.", ["was", "were", "are", "have been"], "Neither of + plural noun-এর পর সাধারণত singular verb বসে: was।"],
+  ["s", "গণিত", "d/dx (sin x) = ?", ["cos x", "− cos x", "sin x", "− sin x"], "sin x-এর অন্তরজ cos x।"],
+  ["s", "সাধারণ জ্ঞান", "বাংলাদেশের সংবিধান কার্যকর হয় কত সালে?", ["১৯৭২", "১৯৭১", "১৯৭৪", "১৯৭৫"], "সংবিধান গৃহীত হয় ৪ নভেম্বর ১৯৭২, কার্যকর হয় ১৬ ডিসেম্বর ১৯৭২।"]
+];
+function pool(level) { const p = BANK.filter(q => q[0] === level); return p.length >= 10 ? p : BANK; }
+function mkQ(q, r) { const opts = shuffle(q[3].map((t, i) => ({ t, ok: i === 0 })), r); return { sub: q[1], q: q[2], opts, exp: q[4] }; }
+
+const ENG = {
+  j: [["book", "বই"], ["school", "বিদ্যালয়"], ["water", "পানি"], ["friend", "বন্ধু"], ["teacher", "শিক্ষক"], ["mother", "মা"], ["garden", "বাগান"], ["flower", "ফুল"], ["window", "জানালা"], ["bridge", "সেতু"]],
+  m: [["library", "গ্রন্থাগার"], ["journey", "ভ্রমণ / যাত্রা"], ["healthy", "সুস্থ"], ["picture", "ছবি"], ["morning", "সকাল"], ["holiday", "ছুটি"], ["kitchen", "রান্নাঘর"], ["mountain", "পাহাড়"], ["machine", "যন্ত্র"], ["season", "ঋতু"]],
+  s: [["knowledge", "জ্ঞান"], ["achievement", "অর্জন"], ["environment", "পরিবেশ"], ["vocabulary", "শব্দভান্ডার"], ["responsible", "দায়িত্বশীল"], ["education", "শিক্ষা"], ["beautiful", "সুন্দর"], ["democracy", "গণতন্ত্র"], ["opportunity", "সুযোগ"], ["experience", "অভিজ্ঞতা"]]
+};
+const SPELL = [["পরীক্ষা", "পরিক্ষা"], ["ব্যবহার", "ব্যাবহার"], ["উজ্জ্বল", "উজ্জল"], ["প্রতিযোগিতা", "প্রতিযোগীতা"], ["দুর্ঘটনা", "দূর্ঘটনা"], ["পুরস্কার", "পুরষ্কার"], ["প্রতীক্ষা", "প্রতিক্ষা"], ["অন্তর্ভুক্ত", "অন্তর্ভূক্ত"], ["মন্ত্রী", "মন্ত্রি"], ["আশীর্বাদ", "আর্শীবাদ"], ["সমৃদ্ধি", "সমৃদ্ধী"]];
+const MEMSETS = {
+  eng: { name: "ইংরেজি ↔ বাংলা", pairs: [["Book", "বই"], ["Pen", "কলম"], ["Water", "পানি"], ["Sun", "সূর্য"], ["Moon", "চাঁদ"], ["Tree", "গাছ"], ["Fish", "মাছ"], ["Bird", "পাখি"], ["House", "বাড়ি"], ["Flower", "ফুল"]] },
+  chem: { name: "মৌলের প্রতীক ↔ নাম", pairs: [["H", "হাইড্রোজেন"], ["O", "অক্সিজেন"], ["C", "কার্বন"], ["Na", "সোডিয়াম"], ["Fe", "লোহা"], ["Au", "সোনা"], ["Ca", "ক্যালসিয়াম"], ["Cl", "ক্লোরিন"]] }
+};
+
+/* ---- দৃশ্য ---- */
+const app = $("#app");
+let timer = null;
+function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+function go(fn) { stopTimer(); window.scrollTo(0, 0); fn(); }
+const examCta = `<a class="btn ghost block" href="index.html#exams">${ic("note")} এবার সত্যিকারের অনলাইন পরীক্ষা দাও</a>`;
+const homeBtn = `<button type="button" class="btn ghost block" data-act="home">${ic("back")} সব গেম</button>`;
+function bestTxt(k, unit) { const b = S.best[k]; return b ? `সেরা: ${BN(b)}${unit || ""}` : ""; }
+
+function home() {
+  const t = dayKey(), done = S.daily.date === t;
+  const streak = S.streak.last === t || S.streak.last === dayKey(new Date(Date.now() - 864e5)) ? S.streak.n : 0;
+  app.innerHTML = `
+  <section class="hero"><h1>${ic("gamepad")} খেলে শেখো</h1><p>ছোট ছোট গেমে পড়া ঝালিয়ে নাও — সাইন ইন লাগবে না, তোমার স্কোর শুধু তোমার ফোনেই থাকে।</p>
+    <div class="chips" role="group" aria-label="শ্রেণি বাছো">${Object.keys(LEVELS).map(k => `<button type="button" class="chip${S.level === k ? " on" : ""}" data-lv="${k}">${LEVELS[k]}</button>`).join("")}</div></section>
+  <div class="stat"><div><b>${ic("flame")} ${BN(streak)}</b>দিনের ধারা</div><div><b>${BN(S.best.math || 0)}</b>দ্রুত হিসাবে সেরা</div><div><b>${BN(S.best.climb || 0)}/১০</b>সোপানে সেরা ধাপ</div></div>
+  <div class="games">
+    <button type="button" class="g today" data-g="daily"><span class="bx">${ic("calendar")}</span><span><b>আজকের চ্যালেঞ্জ</b><span class="s">প্রতিদিন ৫টি নতুন প্রশ্ন</span></span>${done ? `<em>আজ শেষ ✓</em>` : `<em>নতুন</em>`}</button>
+    <button type="button" class="g" data-g="climb"><span class="bx">${ic("stairs")}</span><span><b>সোপান বেয়ে ওঠো</b><span class="s">ঠিক উত্তরে এক ধাপ ওপরে, ভুলে নিচে</span></span></button>
+    <button type="button" class="g" data-g="math"><span class="bx">${ic("bolt")}</span><span><b>দ্রুত হিসাব</b><span class="s">৬০ সেকেন্ডে যত পারো অঙ্ক</span></span></button>
+    <button type="button" class="g" data-g="word"><span class="bx">${ic("letters")}</span><span><b>শব্দ ধাঁধা</b><span class="s">ইংরেজি শব্দ সাজাও, বাংলা বানান বাছো</span></span></button>
+    <button type="button" class="g" data-g="mem"><span class="bx">${ic("cards")}</span><span><b>মেমোরি কার্ড</b><span class="s">জোড়া মিলিয়ে নাও</span></span></button>
+  </div>
+  <p class="foot">খেলা মজার, কিন্তু পড়াই আসল — প্রতিটি গেম অল্প সময়ের।</p>`;
+}
+
+/* ---------- সোপান বেয়ে ওঠো (ও আজকের চ্যালেঞ্জ একই ইঞ্জিন) ---------- */
+function quizRun(cfg) {                         // cfg: {qs, title, stairs:boolean, onDone(correct,total,step)}
+  const st = { i: 0, ok: 0, step: 0, locked: false };
+  const N = cfg.qs.length;
+  function stairsHtml() {
+    return `<div class="stairs" aria-hidden="true">${Array.from({ length: 11 }, (_, k) => `<div class="st${k <= st.step ? " on" : ""}${k === 10 && st.step >= 10 ? " top" : ""}" style="height:${14 + k * 12.5}px">${k === st.step ? `<span class="me">${ic("cap")}</span>` : ""}${k === 10 ? `<span class="goal">${ic("trophy")}</span>` : ""}</div>`).join("")}</div>`;
+  }
+  function draw() {
+    const q = cfg.qs[st.i];
+    app.innerHTML = `<div class="top"><h2>${cfg.title}</h2><span class="sub">প্রশ্ন ${BN(st.i + 1)}/${BN(N)}</span></div>
+      <div class="bar"><i style="width:${(st.i / N) * 100}%"></i></div>
+      ${cfg.stairs ? `<div class="card" style="padding-top:34px">${stairsHtml()}<p class="sub" id="stp" style="text-align:center;margin:8px 0 0">এখন ${BN(st.step)} ধাপে — শীর্ষে পৌঁছাতে ১০ ধাপ</p></div>` : ""}
+      <div class="card"><span class="tag">${esc(q.sub)}</span><p class="q">${esc(q.q)}</p>
+      <div class="opts">${q.opts.map((o, i) => `<button type="button" class="opt" data-o="${i}">${esc(o.t)}</button>`).join("")}</div><div id="fb"></div></div>
+      <button type="button" class="btn ghost block" data-act="home">${ic("back")} বাদ দিয়ে ফিরি</button>`;
+    st.locked = false;
+  }
+  app.onclick = e => {
+    const home_ = e.target.closest("[data-act=home]"); if (home_) return go(home);
+    if (e.target.closest("[data-act=next]")) { st.i++; return st.i >= N ? cfg.onDone(st.ok, N, st.step) : (draw(), window.scrollTo(0, 0)); }
+    const b = e.target.closest("[data-o]"); if (!b || st.locked) return;
+    st.locked = true;
+    const q = cfg.qs[st.i], pick = q.opts[+b.dataset.o], right = pick.ok;
+    app.querySelectorAll(".opt").forEach((x, i) => { x.disabled = true; if (q.opts[i].ok) x.classList.add("ok"); });
+    if (!right) b.classList.add("no");
+    if (right) { st.ok++; st.step = Math.min(10, st.step + 1); } else st.step = Math.max(0, st.step - 1);
+    $("#fb").innerHTML = `<div class="note"><b>${right ? "ঠিক!" : "আরেকটু হলেই হতো।"}</b> ${esc(q.exp)}</div><button type="button" class="btn gold block" data-act="next">${st.i + 1 >= N ? "ফলাফল দেখি" : "পরের প্রশ্ন"} ${ic("next")}</button>`;
+    if (cfg.stairs) { const sd = app.querySelector(".stairs"); if (sd) { sd.outerHTML = stairsHtml(); } const sp = $("#stp"); if (sp) sp.textContent = `এখন ${BN(st.step)} ধাপে — শীর্ষে পৌঁছাতে ১০ ধাপ`; }
+    $("#fb").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+  draw();
+}
+function climb() {
+  const qs = shuffle(pool(S.level)).slice(0, 10).map(q => mkQ(q));
+  quizRun({ qs, title: `${ic("stairs")} সোপান বেয়ে ওঠো`, stairs: true, onDone: (ok, n, step) => {
+    if (step > (S.best.climb || 0)) { S.best.climb = step; save(); }
+    const msg = step >= 10 ? "অসাধারণ! তুমি সোপানের শীর্ষে পৌঁছে গেছ!" : step >= 7 ? "দারুণ! শীর্ষের খুব কাছে ছিলে।" : step >= 4 ? "ভালো চেষ্টা! আবার খেললে আরও ওপরে উঠবে।" : "চলো আবার চেষ্টা করি — প্রতিটি ভুল থেকেই শেখা হয়।";
+    app.innerHTML = `<div class="card big pop"><div class="stars">${"★".repeat(step >= 10 ? 3 : step >= 6 ? 2 : 1)}</div><div class="n">${BN(step)}<span style="font-size:26px">/১০ ধাপ</span></div><p>${BN(ok)}টি ঠিক উত্তর, ${BN(n - ok)}টি ভুল</p><p><b>${msg}</b></p><p class="sub">${bestTxt("climb", " ধাপ")}</p></div>
+      <button type="button" class="btn gold block" data-act="again">${ic("refresh")} আবার খেলি</button>${examCta}${homeBtn}`;
+    app.onclick = e => { if (e.target.closest("[data-act=again]")) go(climb); else if (e.target.closest("[data-act=home]")) go(home); };
+  } });
+}
+
+/* ---------- আজকের চ্যালেঞ্জ ---------- */
+function daily() {
+  const t = dayKey();
+  if (S.daily.date === t) return dailyDone(S.daily.score, S.daily.total, true);
+  const r = rng(hash(t + S.level));
+  const qs = shuffle(pool(S.level), r).slice(0, 5).map(q => mkQ(q, r));
+  quizRun({ qs, title: `${ic("calendar")} আজকের চ্যালেঞ্জ`, stairs: false, onDone: (ok, n) => {
+    const y = dayKey(new Date(Date.now() - 864e5));
+    S.streak = { last: t, n: S.streak.last === y ? S.streak.n + 1 : (S.streak.last === t ? S.streak.n : 1) };
+    S.daily = { date: t, score: ok, total: n }; save(); dailyDone(ok, n, false);
+  } });
+}
+function dailyDone(ok, n, again) {
+  const txt = `আজকের চ্যালেঞ্জে ${BN(ok)}/${BN(n)} পেয়েছি! ধারা ${BN(S.streak.n)} দিন। তুমিও খেলে দেখো: ` + location.href.split("#")[0];
+  app.innerHTML = `<div class="card big pop"><div class="stars">${"★".repeat(ok >= 5 ? 3 : ok >= 3 ? 2 : 1)}</div><div class="n">${BN(ok)}<span style="font-size:26px">/${BN(n)}</span></div>
+    <p>${again ? "আজকের চ্যালেঞ্জ তুমি আগেই শেষ করেছ।" : (ok >= 4 ? "দারুণ হয়েছে!" : "ভালো চেষ্টা!")}</p><p><b>${ic("flame")} ${BN(S.streak.n)} দিনের ধারা</b></p><p class="sub">আগামীকাল নতুন ৫টি প্রশ্ন আসবে — ধারা ধরে রাখতে রোজ এসো।</p></div>
+    <a class="btn gold block" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(txt)}">${ic("share")} বন্ধুদের জানাই (WhatsApp)</a>${examCta}${homeBtn}`;
+  app.onclick = e => { if (e.target.closest("[data-act=home]")) go(home); };
+}
+
+/* ---------- দ্রুত হিসাব ---------- */
+function mathQ(level) {
+  let a, b, txt, ans;
+  const k = Math.random();
+  if (level === "j") {
+    if (k < .4) { a = ri(3, 30); b = ri(2, 20); txt = `${a} + ${b}`; ans = a + b; }
+    else if (k < .75) { a = ri(10, 50); b = ri(2, a); txt = `${a} − ${b}`; ans = a - b; }
+    else { a = ri(2, 9); b = ri(2, 9); txt = `${a} × ${b}`; ans = a * b; }
+  } else if (level === "m") {
+    if (k < .25) { a = ri(20, 99); b = ri(11, 99); txt = `${a} + ${b}`; ans = a + b; }
+    else if (k < .45) { a = ri(40, 150); b = ri(11, a - 1); txt = `${a} − ${b}`; ans = a - b; }
+    else if (k < .75) { a = ri(3, 12); b = ri(3, 12); txt = `${a} × ${b}`; ans = a * b; }
+    else { b = ri(2, 12); ans = ri(2, 12); a = b * ans; txt = `${a} ÷ ${b}`; }
+  } else {
+    if (k < .3) { a = ri(11, 25); b = ri(3, 12); txt = `${a} × ${b}`; ans = a * b; }
+    else if (k < .5) { a = ri(11, 25); txt = `${a}²`; ans = a * a; }
+    else if (k < .75) { b = [10, 20, 25, 50][ri(0, 3)]; a = ri(2, 20) * 20; txt = `${a} এর ${b}%`; ans = a * b / 100; }
+    else { a = ri(5, 30); b = ri(11, 40); txt = `${a} × ${b}`; ans = a * b; }
+  }
+  const set = new Set([ans]); const dif = [1, 2, 3, 10, 5, 4, 20];
+  let guard = 0;
+  while (set.size < 4 && guard++ < 40) { const d = dif[ri(0, dif.length - 1)] * (Math.random() < .5 ? 1 : -1); const v = ans + d; if (v >= 0 && v !== ans) set.add(v); }
+  return { txt, ans, opts: shuffle([...set]) };
+}
+function math() {
+  let left = 60, score = 0, combo = 0, cur = null, wrong = 0;
+  app.innerHTML = `<div class="top"><h2>${ic("bolt")} দ্রুত হিসাব</h2><span class="timer" id="tm">${BN(60)}</span></div>
+    <div class="bar"><i id="tb" style="width:100%"></i></div><div class="card"><div class="top"><span class="sub">স্কোর: <b id="sc">০</b></span><span class="sub" id="cb"></span></div><div class="eq" id="eq"></div><div class="opts two" id="mo"></div></div>
+    <button type="button" class="btn ghost block" data-act="home">${ic("back")} বাদ দিয়ে ফিরি</button>`;
+  function next() {
+    cur = mathQ(S.level); $("#eq").textContent = BN(cur.txt) + " = ?";
+    $("#mo").innerHTML = cur.opts.map(o => `<button type="button" class="opt" data-v="${o}">${BN(o)}</button>`).join("");
+  }
+  app.onclick = e => {
+    if (e.target.closest("[data-act=home]")) return go(home);
+    const b = e.target.closest("[data-v]"); if (!b || left <= 0) return;
+    if (+b.dataset.v === cur.ans) { score++; combo++; $("#sc").textContent = BN(score); $("#cb").innerHTML = combo >= 3 ? `${ic("flame")} ${BN(combo)} পরপর ঠিক!` : ""; next(); }
+    else { wrong++; combo = 0; $("#cb").textContent = ""; b.classList.add("no"); b.disabled = true; }
+  };
+  next();
+  timer = setInterval(() => {
+    left--; $("#tm").textContent = BN(left); $("#tm").classList.toggle("low", left <= 10); $("#tb").style.width = (left / 60 * 100) + "%";
+    if (left <= 0) {
+      stopTimer(); if (score > (S.best.math || 0)) { S.best.math = score; save(); }
+      app.innerHTML = `<div class="card big pop"><div class="stars">${"★".repeat(score >= 25 ? 3 : score >= 14 ? 2 : 1)}</div><div class="n">${BN(score)}</div><p>৬০ সেকেন্ডে ${BN(score)}টি ঠিক উত্তর, ${BN(wrong)}টি ভুল</p><p class="sub">${bestTxt("math", "টি")}</p></div>
+        <button type="button" class="btn gold block" data-act="again">${ic("refresh")} আবার খেলি</button>${examCta}${homeBtn}`;
+      app.onclick = ev => { if (ev.target.closest("[data-act=again]")) go(math); else if (ev.target.closest("[data-act=home]")) go(home); };
+    }
+  }, 1000);
+}
+
+/* ---------- শব্দ ধাঁধা ---------- */
+function word() {
+  app.innerHTML = `<div class="top"><h2>${ic("letters")} শব্দ ধাঁধা</h2></div><div class="games">
+    <button type="button" class="g" data-w="eng"><span class="bx">${ic("letters")}</span><span><b>ইংরেজি শব্দ সাজাও</b><span class="s">এলোমেলো অক্ষর সাজিয়ে সঠিক শব্দ বানাও</span></span></button>
+    <button type="button" class="g" data-w="bn"><span class="bx">${ic("pencil")}</span><span><b>সঠিক বাংলা বানান</b><span class="s">দুটির মধ্যে শুদ্ধ বানানটি বাছো</span></span></button></div>${homeBtn}`;
+  app.onclick = e => { const b = e.target.closest("[data-w]"); if (b) return go(b.dataset.w === "eng" ? engScramble : bnSpell); if (e.target.closest("[data-act=home]")) go(home); };
+}
+function engScramble() {
+  const list = shuffle(ENG[S.level]).slice(0, 8);
+  let i = 0, score = 0, ans = [], used = [], tiles = [], hint = false, solvedNoHint = 0;
+  function scr(w) { let t, g = 0; do { t = shuffle(w.split("")); g++; } while (t.join("") === w && g < 20); return t; }
+  function draw() {
+    const [w, m] = list[i]; tiles = scr(w); ans = []; used = tiles.map(() => false); hint = false;
+    app.innerHTML = `<div class="top"><h2>${ic("letters")} ইংরেজি শব্দ সাজাও</h2><span class="sub">${BN(i + 1)}/${BN(list.length)}</span></div><div class="bar"><i style="width:${i / list.length * 100}%"></i></div>
+      <div class="card"><p class="sub" style="text-align:center;margin:0">এই অর্থের ইংরেজি শব্দটি সাজাও</p><p class="meaning">${esc(m)}</p><div class="slots" id="sl"></div><div class="tiles" id="tl"></div>
+      <div class="row2"><button type="button" class="btn ghost sm" data-act="clear">${ic("refresh")} মুছে নতুন করে</button><button type="button" class="btn ghost sm" data-act="hint">${ic("bulb")} ইঙ্গিত</button></div><div id="fb"></div></div>${homeBtn}`;
+    paint();
+  }
+  function paint() {
+    const w = list[i][0];
+    $("#sl").innerHTML = w.split("").map((_, k) => `<span class="slot${ans[k] ? " f" : (hint && k === 0 ? " hint" : "")}">${ans[k] ? esc(ans[k].c) : (hint && k === 0 ? esc(w[0]) : "")}</span>`).join("");
+    $("#tl").innerHTML = tiles.map((c, k) => `<button type="button" class="tile" data-t="${k}" ${used[k] ? "disabled" : ""}>${esc(c)}</button>`).join("");
+  }
+  function check() {
+    const w = list[i][0], got = ans.map(x => x.c).join("");
+    if (got === w) {
+      score += hint ? 1 : 2; if (!hint) solvedNoHint++;
+      $("#fb").innerHTML = `<div class="note"><b>ঠিক!</b> ${esc(w)}</div><button type="button" class="btn gold block" data-act="next">${i + 1 >= list.length ? "ফলাফল দেখি" : "পরের শব্দ"} ${ic("next")}</button>`;
+      app.querySelectorAll(".tile").forEach(t => t.disabled = true);
+      app.querySelectorAll(".slot").forEach(s => s.classList.add("f"));
+    } else { $("#fb").innerHTML = `<div class="note" style="background:#fef2f2;color:#7f1d1d">এটি সঠিক শব্দ হয়নি — মুছে আবার চেষ্টা করো।</div>`; }
+  }
+  app.onclick = e => {
+    if (e.target.closest("[data-act=home]")) return go(home);
+    if (e.target.closest("[data-act=clear]")) { ans = []; used = used.map(() => false); $("#fb").innerHTML = ""; return paint(); }
+    if (e.target.closest("[data-act=hint]")) { hint = true; return paint(); }
+    if (e.target.closest("[data-act=next]")) {
+      i++; if (i < list.length) return draw();
+      const max = list.length * 2, key = "word_en"; if (score > (S.best[key] || 0)) { S.best[key] = score; save(); }
+      app.innerHTML = `<div class="card big pop"><div class="stars">${"★".repeat(score >= max - 2 ? 3 : score >= max / 2 ? 2 : 1)}</div><div class="n">${BN(score)}<span style="font-size:26px">/${BN(max)}</span></div><p>ইঙ্গিত ছাড়া ${BN(solvedNoHint)}টি শব্দ সাজিয়েছ</p><p class="sub">${bestTxt("word_en")}</p></div>
+        <button type="button" class="btn gold block" data-act="again">${ic("refresh")} আবার খেলি</button>${examCta}${homeBtn}`;
+      app.onclick = ev => { if (ev.target.closest("[data-act=again]")) go(engScramble); else if (ev.target.closest("[data-act=home]")) go(home); };
+      return;
+    }
+    const t = e.target.closest("[data-t]"); if (!t || t.disabled) return;
+    const k = +t.dataset.t; if (ans.length >= list[i][0].length || used[k]) return;
+    used[k] = true; ans.push({ c: tiles[k], k }); $("#fb").innerHTML = ""; paint();
+    if (ans.length === list[i][0].length) check();
+  };
+  draw();
+}
+function bnSpell() {
+  const list = shuffle(SPELL).slice(0, 10).map(p => ({ ok: p[0], opts: shuffle([p[0], p[1]]) }));
+  let i = 0, score = 0, locked = false;
+  function draw() {
+    locked = false; const q = list[i];
+    app.innerHTML = `<div class="top"><h2>${ic("pencil")} সঠিক বাংলা বানান</h2><span class="sub">${BN(i + 1)}/${BN(list.length)}</span></div><div class="bar"><i style="width:${i / list.length * 100}%"></i></div>
+      <div class="card"><p class="q" style="text-align:center">কোন বানানটি শুদ্ধ?</p><div class="opts two">${q.opts.map((o, k) => `<button type="button" class="opt" data-o="${k}">${esc(o)}</button>`).join("")}</div><div id="fb"></div></div>${homeBtn}`;
+  }
+  app.onclick = e => {
+    if (e.target.closest("[data-act=home]")) return go(home);
+    if (e.target.closest("[data-act=next]")) {
+      i++; if (i < list.length) return draw();
+      if (score > (S.best.word_bn || 0)) { S.best.word_bn = score; save(); }
+      app.innerHTML = `<div class="card big pop"><div class="stars">${"★".repeat(score >= 9 ? 3 : score >= 6 ? 2 : 1)}</div><div class="n">${BN(score)}<span style="font-size:26px">/${BN(list.length)}</span></div><p>শুদ্ধ বানান চিনতে পেরেছ ${BN(score)}টি</p><p class="sub">${bestTxt("word_bn")}</p></div>
+        <button type="button" class="btn gold block" data-act="again">${ic("refresh")} আবার খেলি</button>${examCta}${homeBtn}`;
+      app.onclick = ev => { if (ev.target.closest("[data-act=again]")) go(bnSpell); else if (ev.target.closest("[data-act=home]")) go(home); };
+      return;
+    }
+    const b = e.target.closest("[data-o]"); if (!b || locked) return; locked = true;
+    const q = list[i], right = q.opts[+b.dataset.o] === q.ok;
+    app.querySelectorAll(".opt").forEach((x, k) => { x.disabled = true; if (q.opts[k] === q.ok) x.classList.add("ok"); });
+    if (right) score++; else b.classList.add("no");
+    $("#fb").innerHTML = `<div class="note"><b>${right ? "ঠিক!" : "শুদ্ধ বানান:"}</b> ${esc(q.ok)}</div><button type="button" class="btn gold block" data-act="next">${i + 1 >= list.length ? "ফলাফল দেখি" : "পরেরটি"} ${ic("next")}</button>`;
+  };
+  draw();
+}
+
+/* ---------- মেমোরি কার্ড ---------- */
+function mem() {
+  const key = Object.keys(MEMSETS)[Math.floor(Math.random() * 2)], set = MEMSETS[key];
+  const pairs = shuffle(set.pairs).slice(0, 6);
+  const cards = shuffle(pairs.flatMap((p, id) => [{ id, t: p[0] }, { id, t: p[1] }]));
+  let open = [], moves = 0, matched = 0, t0 = 0, busy = false;
+  app.innerHTML = `<div class="top"><h2>${ic("cards")} মেমোরি কার্ড</h2><span class="sub">চাল: <b id="mv">০</b> • <b id="tt">০</b> সেকেন্ড</span></div>
+    <p class="sub" style="margin:0">জোড়া মেলাও — ${esc(set.name)}</p>
+    <div class="mem">${cards.map((c, i) => `<button type="button" class="c" data-c="${i}" aria-label="কার্ড ${BN(i + 1)}"><span class="in"><span class="fr">${ic("star")}</span><span class="bk">${esc(c.t)}</span></span></button>`).join("")}</div>
+    <button type="button" class="btn ghost block" data-act="home">${ic("back")} বাদ দিয়ে ফিরি</button>`;
+  app.onclick = e => {
+    if (e.target.closest("[data-act=home]")) return go(home);
+    const b = e.target.closest("[data-c]"); if (!b || busy || b.classList.contains("f") || b.classList.contains("m")) return;
+    if (!t0) { t0 = Date.now(); timer = setInterval(() => { const tt = $("#tt"); if (tt) tt.textContent = BN(Math.floor((Date.now() - t0) / 1000)); }, 500); }
+    b.classList.add("f"); open.push(b);
+    if (open.length < 2) return;
+    moves++; $("#mv").textContent = BN(moves); busy = true;
+    const [x, y] = open; open = [];
+    if (cards[+x.dataset.c].id === cards[+y.dataset.c].id) {
+      x.classList.add("m"); y.classList.add("m"); busy = false; matched++;
+      if (matched === pairs.length) {
+        stopTimer(); const secs = Math.max(1, Math.round((Date.now() - t0) / 1000));
+        if (!S.best.mem || moves < S.best.mem) { S.best.mem = moves; save(); }
+        setTimeout(() => {
+          app.innerHTML = `<div class="card big pop"><div class="stars">${"★".repeat(moves <= 10 ? 3 : moves <= 14 ? 2 : 1)}</div><div class="n">${BN(moves)}<span style="font-size:26px"> চালে</span></div><p>${BN(secs)} সেকেন্ডে সব জোড়া মিলিয়েছ</p><p class="sub">সবচেয়ে কম চাল: ${BN(S.best.mem)}</p></div>
+            <button type="button" class="btn gold block" data-act="again">${ic("refresh")} আবার খেলি</button>${examCta}${homeBtn}`;
+          app.onclick = ev => { if (ev.target.closest("[data-act=again]")) go(mem); else if (ev.target.closest("[data-act=home]")) go(home); };
+        }, 600);
+      }
+    } else setTimeout(() => { x.classList.remove("f"); y.classList.remove("f"); busy = false; }, 800);
+  };
+}
+
+/* ---- মূল পাতার ক্লিক ---- */
+function bindHome() {
+  app.onclick = e => {
+    const lv = e.target.closest("[data-lv]"); if (lv) { S.level = lv.dataset.lv; save(); return home(); }
+    const g = e.target.closest("[data-g]"); if (!g) return;
+    const m = { daily, climb, math, word, mem }[g.dataset.g]; if (m) go(m);
+  };
+}
+const _home = home; home = function () { _home(); bindHome(); };
+home();
+</script>
+</body>
+</html>
