@@ -263,6 +263,7 @@ function stuEdit(uid) {
       <div><label class="block text-sm font-medium mb-1" for="fRoll">রোল / আইডি (ফাঁকা ছাড়া)</label><input id="fRoll" class="${inp}" maxlength="40" autocapitalize="characters" value="${esc(s.roll)}" placeholder="${esc(S.nextRoll)}"></div>
       <div><label class="block text-sm font-medium mb-1" for="fBatch">ব্যাচ</label><input id="fBatch" list="bl" class="${inp}" maxlength="60" value="${esc(s.batch)}" placeholder="যেমন নবম-দশম, একাদশ-দ্বাদশ"><datalist id="bl">${batches.map(b => `<option value="${esc(b)}">`).join("")}</datalist></div>
       <div><label class="block text-sm font-medium mb-1" for="fSince">ভর্তির তারিখ (ঐচ্ছিক)</label><input id="fSince" type="date" class="${inp}" value="${esc(s.since)}"><p class="text-xs text-slate-500 mt-1">এর আগের ক্লাস উপস্থিতিতে গোনা হবে না।</p></div>
+      <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200"><input id="fPh" type="checkbox" class="w-5 h-5 mt-0.5" ${s.hphoto ? "checked" : ""}><span><span class="font-semibold">🏅 সম্মাননায় ছবি দেখান</span><span class="block text-xs text-slate-500">${s.photo ? "শিক্ষার্থী ছবি দিয়েছে। চালু করলে সেরাদের কার্ডে ছবি দেখাবে (অভিভাবকের অনুমতি নিয়ে চালু করুন)।" : "শিক্ষার্থী এখনো ছবি দেয়নি — ছবি দিলে তবেই দেখাবে।"}</span></span></label>
       <p id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
       <button id="fGo" type="submit" class="${btnP}">সংরক্ষণ করুন</button>
       <p class="text-xs text-slate-500">রোল দিলে এই শিক্ষার্থী সাইন ইন করে নিজের ফি, উপস্থিতি ও ফল দেখতে পাবে — আগে ফোন করে নিশ্চিত হয়ে নিন এটি সত্যিই সেই শিক্ষার্থী।</p>
@@ -271,7 +272,7 @@ function stuEdit(uid) {
   $("#sf2").addEventListener("submit", async ev => {
     ev.preventDefault();
     const b = $("#fGo"); b.disabled = true; b.textContent = "সংরক্ষণ হচ্ছে…";
-    const d = await api({ action: "a_student_save", uid, enrolled: $("#fEn").checked ? "হ্যাঁ" : "না", roll: $("#fRoll").value, batch: $("#fBatch").value, since: $("#fSince").value });
+    const d = await api({ action: "a_student_save", uid, enrolled: $("#fEn").checked ? "হ্যাঁ" : "না", roll: $("#fRoll").value, batch: $("#fBatch").value, since: $("#fSince").value, hphoto: $("#fPh").checked ? "1" : "0" });
     if (!d.ok) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; const e = $("#fErr"); e.textContent = d.error || "সংরক্ষণ হয়নি।"; e.classList.remove("hidden"); return; }
     toast("সংরক্ষণ হয়েছে ✅"); S.students = null; const o = await api({ action: "a_overview" }); if (o.ok) S.ov = o; sheetClose(); vStudents();
   });
@@ -384,7 +385,8 @@ async function vMarks() {
       <div class="grid grid-cols-2 gap-3"><input id="mT" type="number" inputmode="numeric" min="1" class="${inp}" placeholder="পূর্ণমান" aria-label="পূর্ণমান"><select id="mB" class="${inp}" aria-label="ব্যাচ"><option value="">সব ভর্তিকৃত</option>${ov.batches.map(b => `<option>${esc(b.name)}</option>`).join("")}</select></div>
       <button class="${btnP}" type="submit">নম্বর তোলা শুরু করুন</button></form>`)}
     ${card(`${h3("📋 তোলা পরীক্ষাগুলো")}${d.list.length ? d.list.map((x, i) => `<div class="py-2.5 border-t border-slate-100 first:border-0"><div class="flex items-start justify-between gap-2"><button type="button" data-i="${i}" class="text-left min-w-0"><p class="font-medium truncate">${esc(x.exam)}</p><p class="text-xs text-slate-500">${esc(x.subject)} • ${bn(x.date)} • ${bn(x.count)} জন • পূর্ণমান ${bn(x.total)}</p></button>
-        <button type="button" data-p="${i}" class="shrink-0 text-xs rounded-full px-3 py-1.5 ${x.published >= x.count ? "bg-emerald-100 text-emerald-800" : x.published ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"}">${x.published >= x.count ? "✔ প্রকাশিত" : x.published ? "আংশিক প্রকাশিত" : "প্রকাশ করুন"}</button></div></div>`).join("") : '<p class="text-sm text-slate-500">এখনো কোনো ফল তোলা হয়নি।</p>'}`)}`;
+        <button type="button" data-p="${i}" class="shrink-0 text-xs rounded-full px-3 py-1.5 ${x.published >= x.count ? "bg-emerald-100 text-emerald-800" : x.published ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"}">${x.published >= x.count ? "✔ প্রকাশিত" : x.published ? "আংশিক প্রকাশিত" : "প্রকাশ করুন"}</button></div>
+        <div class="mt-2"><button type="button" data-h="${i}" class="text-xs rounded-full px-3 py-1.5 ${x.honor >= x.count ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"}">${x.honor >= x.count ? "🏅 সোপান সম্মাননায় দেখানো হচ্ছে" : "🏅 সোপান সম্মাননায় দেখান"}</button></div></div>`).join("") : '<p class="text-sm text-slate-500">এখনো কোনো ফল তোলা হয়নি।</p>'}`)}`;
   $("#mf").addEventListener("submit", ev => {
     ev.preventDefault();
     const exam = $("#mE").value.trim(), date = $("#mDt").value, subject = $("#mS").value.trim(), total = Number($("#mT").value);
@@ -392,8 +394,15 @@ async function vMarks() {
     marksEntry({ exam, date, subject, total, batch: $("#mB").value });
   });
   $("#view").onclick = async e => {
-    const open = e.target.closest("[data-i]"), pub = e.target.closest("[data-p]");
+    const open = e.target.closest("[data-i]"), pub = e.target.closest("[data-p]"), hon = e.target.closest("[data-h]");
     if (open) { const x = d.list[+open.dataset.i]; marksEntry({ exam: x.exam, date: x.date, subject: x.subject, total: x.total, batch: "" }); }
+    if (hon) {
+      const x = d.list[+hon.dataset.h], on = x.honor < x.count;
+      if (!confirm(on ? `"${x.exam}" এর সেরা ১০ জন (শুধু প্রথম নাম ও শ্রেণি) ওয়েবসাইটের "সোপান সম্মাননা"-য় সবার জন্য দেখাবেন?` : "সম্মাননা থেকে সরিয়ে নেবেন?")) return;
+      const r = await api({ action: "a_marks_honor", exam: x.exam, date: x.date, subject: x.subject, honor: on ? "1" : "0" });
+      if (!r.ok) return toast(r.error || "হয়নি।", true);
+      toast(on ? "সম্মাননায় যুক্ত হয়েছে 🏅" : "সম্মাননা থেকে সরানো হয়েছে"); vMarks();
+    }
     if (pub) {
       const x = d.list[+pub.dataset.p], on = x.published < x.count;
       if (!confirm(on ? `"${x.exam}" এর ফল শিক্ষার্থীদের কাছে প্রকাশ করবেন? প্রত্যেকে শুধু নিজেরটা দেখবে।` : "প্রকাশ বন্ধ করবেন?")) return;
