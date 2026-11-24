@@ -185,7 +185,7 @@ function go(tab, arg) {
   $("#back").classList.toggle("hidden", !(SUBTABS.includes(tab) && tab !== "qs"));
   $("#tabs > div").innerHTML = TABS.map(t => `<button type="button" data-tab="${t[0]}" class="py-2 text-center ${t[0] === act ? "text-brand-700 font-bold" : "text-slate-500"}"><span class="block text-xl leading-none">${t[1]}</span><span class="block text-[11px] mt-0.5">${t[2]}${t[0] === "more" && S.ov && S.ov.pendingPay ? ` <b class="text-red-600">${bn(S.ov.pendingPay)}</b>` : ""}</span></button>`).join("");
   $("#view").onclick = null; $("#view").innerHTML = loading(); window.scrollTo(0, 0);
-  ({ home: vHome, stu: vStudents, fee: vFees, att: vAtt, mark: vMarks, pay: vPay, more: vMore, tok: vTok, exm: vExams, qs: vQs, res: vRes, not: vNot, cr: vCr, step: vStep, sec: vSec })[tab](arg);
+  ({ home: vHome, stu: vStudents, fee: vFees, att: vAtt, mark: vMarks, pay: vPay, ver: vVer, more: vMore, tok: vTok, exm: vExams, qs: vQs, res: vRes, not: vNot, cr: vCr, step: vStep, sec: vSec })[tab](arg);
 }
 $("#backBtn").addEventListener("click", () => go("more"));
 $("#tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) go(b.dataset.tab); });
@@ -213,6 +213,7 @@ async function vHome() {
       ${stat(bn(d.newSignups), "নতুন সাইন আপ (অনুমোদন বাকি)", d.newSignups ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-white border-slate-100", "stu", "new")}
       ${stat(money(d.dueTotal), `মোট বকেয়া (${bn(d.owing)} জন)`, d.owing ? "bg-red-50 border-red-200 text-red-800" : "bg-white border-slate-100", "fee")}
       ${stat(bn(d.pendingPay), "অপেক্ষমাণ পেমেন্ট", d.pendingPay ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-white border-slate-100", "pay")}
+      ${stat(bn(d.verPending || 0), "মোবাইল যাচাইয়ের অপেক্ষায়", d.verPending ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-white border-slate-100", "ver")}
     </div>
     ${warns.length ? card(warns.map(w => `<p class="text-sm">${w}</p>`).join(""), "border-red-200") : ""}
     ${card(`${h3("আজকের কাজ")}<div class="grid grid-cols-2 gap-2">
@@ -263,12 +264,21 @@ function stuEdit(uid) {
       <div><label class="block text-sm font-medium mb-1" for="fRoll">রোল / আইডি (ফাঁকা ছাড়া)</label><input id="fRoll" class="${inp}" maxlength="40" autocapitalize="characters" value="${esc(s.roll)}" placeholder="${esc(S.nextRoll)}"></div>
       <div><label class="block text-sm font-medium mb-1" for="fBatch">ব্যাচ</label><input id="fBatch" list="bl" class="${inp}" maxlength="60" value="${esc(s.batch)}" placeholder="যেমন নবম-দশম, একাদশ-দ্বাদশ"><datalist id="bl">${batches.map(b => `<option value="${esc(b)}">`).join("")}</datalist></div>
       <div><label class="block text-sm font-medium mb-1" for="fSince">ভর্তির তারিখ (ঐচ্ছিক)</label><input id="fSince" type="date" class="${inp}" value="${esc(s.since)}"><p class="text-xs text-slate-500 mt-1">এর আগের ক্লাস উপস্থিতিতে গোনা হবে না।</p></div>
+      <div class="flex items-center justify-between gap-2 p-3 rounded-xl border ${s.verified ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}"><span class="text-sm font-semibold ${s.verified ? "text-emerald-800" : "text-amber-900"}">${s.verified ? "✅ মোবাইল যাচাইকৃত" : "⚠ মোবাইল যাচাই হয়নি"}</span><button type="button" id="fVer" class="text-xs rounded-full px-3 py-1.5 bg-white border border-slate-300">${s.verified && !s.enrolled ? "বাতিল করুন" : (s.verified ? "ভর্তিকৃত বলে যাচাইকৃত" : "যাচাই করুন")}</button></div>
       <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200"><input id="fPh" type="checkbox" class="w-5 h-5 mt-0.5" ${s.hphoto ? "checked" : ""}><span><span class="font-semibold">🏅 সম্মাননায় ছবি দেখান</span><span class="block text-xs text-slate-500">${s.photo ? "শিক্ষার্থী ছবি দিয়েছে। চালু করলে সেরাদের কার্ডে ছবি দেখাবে (অভিভাবকের অনুমতি নিয়ে চালু করুন)।" : "শিক্ষার্থী এখনো ছবি দেয়নি — ছবি দিলে তবেই দেখাবে।"}</span></span></label>
       <p id="fErr" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>
       <button id="fGo" type="submit" class="${btnP}">সংরক্ষণ করুন</button>
       <p class="text-xs text-slate-500">রোল দিলে এই শিক্ষার্থী সাইন ইন করে নিজের ফি, উপস্থিতি ও ফল দেখতে পাবে — আগে ফোন করে নিশ্চিত হয়ে নিন এটি সত্যিই সেই শিক্ষার্থী।</p>
     </form>`);
   $("#fEn").addEventListener("change", e => { if (e.target.checked && !$("#fRoll").value.trim()) $("#fRoll").value = S.nextRoll; });
+  $("#fVer").addEventListener("click", async () => {
+    if (s.verified && s.enrolled) return toast("ভর্তিকৃত শিক্ষার্থী নিজে থেকেই যাচাইকৃত ধরা হয়।");
+    const on = !s.verified;
+    if (!confirm(on ? "এই শিক্ষার্থীর মোবাইল যাচাইকৃত করবেন? (কোড না মিলিয়েও করা যায়, তবে নিশ্চিত হয়ে করুন)" : "যাচাই বাতিল করবেন?")) return;
+    const r = await api({ action: "a_verify_set", uid, ok: on ? "1" : "0" });
+    if (!r.ok) return toast(r.error || "হয়নি।", true);
+    toast("হয়েছে ✅"); S.students = null; const o = await api({ action: "a_overview" }); if (o.ok) S.ov = o; sheetClose(); vStudents();
+  });
   $("#sf2").addEventListener("submit", async ev => {
     ev.preventDefault();
     const b = $("#fGo"); b.disabled = true; b.textContent = "সংরক্ষণ হচ্ছে…";
@@ -455,8 +465,26 @@ async function vPay() {
   };
 }
 
+/* ===================== মোবাইল যাচাই ===================== */
+async function vVer() {
+  const d = await api({ action: "a_verify_list" });
+  if (!d.ok) return failView(d);
+  $("#view").innerHTML = card(`<p class="font-semibold text-brand-800 mb-1">📱 যাচাইয়ের অপেক্ষায় (${bn(d.list.length)} জন)</p><p class="text-sm text-slate-600">শিক্ষার্থী সাইট থেকে কোডসহ আপনার WhatsApp-এ মেসেজ পাঠালে এখানে আসে। <b>WhatsApp-এ যে নম্বর থেকে মেসেজ এসেছে এবং কোড</b> এখানকার সঙ্গে মিললে "যাচাই করুন" চাপুন। মিলে না গেলে "বাতিল" করুন।</p><p class="text-xs text-slate-500 mt-2">মোট যাচাই-না-হওয়া অ্যাকাউন্ট: ${bn(d.unverified)} (এদের সবাই এখনো মেসেজ পাঠায়নি)।</p>`)
+    + (d.list.length ? d.list.map((x, i) => card(`<div class="flex items-start justify-between gap-2"><div class="min-w-0"><p class="font-semibold truncate">${esc(x.name || "—")}</p><p class="text-xs text-slate-500 truncate">${esc(x.cls || "")} • ${esc(x.email)}</p></div><span class="shrink-0 font-mono font-bold text-brand-800 bg-brand-50 rounded-lg px-3 py-1 select-all">${esc(x.code)}</span></div>
+      <p class="text-sm mt-2">📱 <a class="text-brand-700 underline" href="tel:${esc(x.phone)}">${esc(x.phone)}</a> <a class="text-emerald-700 underline ml-2" target="_blank" rel="noopener" href="https://wa.me/88${esc(x.phone)}">WhatsApp</a> <span class="text-xs text-slate-500 ml-1">${esc(x.at)}</span></p>
+      <div class="grid grid-cols-2 gap-2 mt-3"><button type="button" data-v="${i}" data-ok="1" class="${btnP}">✔ যাচাই করুন</button><button type="button" data-v="${i}" data-ok="0" class="px-4 py-2.5 rounded-xl border-2 border-red-300 text-red-700 font-semibold">✖ বাতিল</button></div>`)).join("") : card('<p class="text-sm text-slate-500">এখন কেউ অপেক্ষায় নেই।</p>'));
+  $("#view").onclick = async e => {
+    const b = e.target.closest("[data-v]"); if (!b) return;
+    const x = d.list[+b.dataset.v], ok = b.dataset.ok === "1";
+    if (!confirm(ok ? `${x.name} (${x.phone}) — কোড ${x.code}\nWhatsApp-এ এই নম্বর থেকেই এই কোড এসেছে নিশ্চিত?` : `${x.name}-এর যাচাই বাতিল করবেন? সে নতুন কোড নিয়ে আবার পাঠাতে পারবে।`)) return;
+    const r = await api({ action: "a_verify_set", uid: x.uid, ok: ok ? "1" : "0" });
+    if (!r.ok) return toast(r.error || "হয়নি।", true);
+    toast(ok ? "যাচাই হয়েছে ✅" : "বাতিল হয়েছে"); const o = await api({ action: "a_overview" }); if (o.ok) S.ov = o; go("ver");
+  };
+}
+
 /* ===================== আরও (মেনু) ===================== */
-const SUBTABS = ["mark", "pay", "exm", "qs", "res", "not", "tok", "cr", "step", "sec"];
+const SUBTABS = ["mark", "ver", "pay", "exm", "qs", "res", "not", "tok", "cr", "step", "sec"];
 function vMore() {
   const pend = S.ov && S.ov.pendingPay ? ` <b class="ml-1 px-2 rounded-full bg-red-600 text-white text-xs">${bn(S.ov.pendingPay)}</b>` : "";
   const item = (t, ic, label, sub) => `<button type="button" data-go="${t}" class="w-full text-left bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-3 flex items-center gap-4"><span class="text-3xl">${ic}</span><span class="min-w-0"><span class="block font-semibold text-brand-800">${label}</span><span class="block text-xs text-slate-500">${sub}</span></span></button>`;
@@ -468,6 +496,7 @@ function vMore() {
     + item("not", "📢", "নোটিশ", "সাইটের নোটিশ বোর্ডে লিখুন, বদলান বা লুকান")
     + item("tok", "🪙", "টোকেন", "ব্যালান্স দেখুন, হাতে যোগ/কর্তন করুন, দাম ও উপহার ঠিক করুন")
     + item("mark", "🧾", "অফলাইন পরীক্ষার নম্বর", "নম্বর তুলুন ও প্রকাশ করুন")
+    + item("ver", "📱", "মোবাইল যাচাই" + (S.ov && S.ov.verPending ? ` <b class="ml-1 px-2 rounded-full bg-red-600 text-white text-xs">${bn(S.ov.verPending)}</b>` : ""), "WhatsApp-এ আসা কোড মিলিয়ে নম্বর যাচাই করুন")
     + item("pay", "💳", "পেমেন্ট অনুমোদন" + pend, "বিকাশ/নগদের আবেদন মিলিয়ে অনুমোদন দিন");
 }
 
