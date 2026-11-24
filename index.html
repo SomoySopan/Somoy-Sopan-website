@@ -322,7 +322,7 @@
     <div class="text-center mb-8">
       <h2 class="text-3xl font-bold text-brand-800">অনলাইন পরীক্ষা ও প্রতিযোগিতা</h2>
       <div class="w-16 h-1 bg-gold-500 rounded mx-auto mt-3"></div>
-      <p class="text-slate-500 mt-3">প্রথম থেকে দ্বাদশ ও NU ভর্তি প্রস্তুতি — সবার জন্য মডেল টেস্ট। পরীক্ষা দিন, নিজের অবস্থান জানুন। নাম, মোবাইল ও শ্রেণি দিলেই অংশ নেওয়া যাবে।</p>
+      <p class="text-slate-500 mt-3">প্রথম থেকে দ্বাদশ ও NU ভর্তি প্রস্তুতি — সবার জন্য মডেল টেস্ট। পরীক্ষা দিন, নিজের অবস্থান জানুন। সাইন ইন করে মোবাইল নম্বর যাচাই করলেই অংশ নেওয়া যাবে।</p>
     </div>
     <p class="text-center -mt-4 mb-5"><button type="button" data-legal="help" class="text-sm text-brand-700 underline underline-offset-4">📘 কীভাবে ব্যবহার করবেন?</button></p>
     <div class="max-w-xs mx-auto mb-6"><select id="exFilterCls" aria-label="শ্রেণি অনুযায়ী দেখুন" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 bg-white"></select></div>
@@ -1102,6 +1102,8 @@ window.addEventListener("beforeunload", e => { if (ex.run && !ex.run.done) { e.p
 
 /* ----- প্রবেশ ফরম ----- */
 function exEntry(e, msg) {
+  if (!au.user) return exAuth("in", "", () => exGo(e.id));            // পরীক্ষা দিতে সাইন ইন ও মোবাইল যাচাই লাগে
+  if (exNeedVerify(() => exGo(e.id))) return;
   const saved = lsGet("ss_ex_" + e.id) || {};
   const pf = au.profile || {};
   const need = (e.paid && e.access === "locked") ? (e.fee || 0) : 0;
@@ -1146,6 +1148,7 @@ function exEntry(e, msg) {
         if (d.code === "done") add("exSeeBoard", "🏆 র‍্যাংকিং দেখুন", () => exBoard(e));
         else if (d.code === "login" || d.code === "auth") add("exSeeLogin", "সাইন ইন করুন", () => exAuth("in", "", () => exGo(e.id)));
         else if (d.code === "tokens") add("exSeePay", "🪙 টোকেন কিনুন", () => exPay(e));
+        else if (d.code === "verify") add("exSeeVer", "📱 মোবাইল যাচাই করুন", () => exVerify(() => exGo(e.id)));
         return;
       }
       lsSet("ss_ex_" + e.id, Object.assign(saved, { name, phone, cls }));
@@ -1373,7 +1376,7 @@ function exAuth(mode, msg, then) {
   if (!au.fb) { exOpen(`${exTop("সাইন ইন")}<p class="text-center text-slate-600 py-16">সাইন ইন এই মুহূর্তে চালু করা যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।</p>`); return; }
   exOpen(`${exTop(up ? "সাইন আপ (নতুন অ্যাকাউন্ট)" : "সাইন ইন")}
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 grid gap-4">
-      <p class="text-sm text-slate-600">${au.then ? "পেইড পরীক্ষা দিতে সাইন ইন করতে হয়। " : ""}সাইন ইন করলে আপনার ফল জমা থাকে, নাম-মোবাইল নিজে থেকে বসে যায়, এবং জমা দেওয়ার পরপরই সঠিক উত্তর ও ব্যাখ্যা দেখা যায়।</p>
+      <p class="text-sm text-slate-600">${au.then ? "পরীক্ষা দিতে সাইন ইন ও মোবাইল যাচাই করতে হয়। " : ""}সাইন ইন করলে আপনার ফল জমা থাকে, নাম-মোবাইল নিজে থেকে বসে যায়, এবং জমা দেওয়ার পরপরই সঠিক উত্তর ও ব্যাখ্যা দেখা যায়।</p>
       ${/FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|MicroMessenger/i.test(navigator.userAgent) ? '<p class="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">⚠ আপনি ফেসবুক/মেসেঞ্জারের ভেতরের ব্রাউজারে আছেন। এখানে "Google দিয়ে চালিয়ে যান" কাজ নাও করতে পারে। ওপরের ⋮ বা ••• মেনু থেকে <b>"Chrome-এ খুলুন"</b> চাপুন, অথবা নিচে ইমেইল দিয়ে সাইন ইন করুন।</p>' : ""}
       <p class="text-xs text-slate-500">সাইন ইন বা সাইন আপ করে আপনি আমাদের <button type="button" data-legal="privacy" class="underline text-brand-700">গোপনীয়তা নীতি</button> ও <button type="button" data-legal="terms" class="underline text-brand-700">শর্তাবলি</button> মেনে নিচ্ছেন। ১৮ বছরের কম বয়সীরা অভিভাবকের জানা অনুযায়ী সাইন ইন করবে।</p>
       <button type="button" id="auGoogle" class="w-full py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 font-semibold flex items-center justify-center gap-2">
@@ -1471,13 +1474,57 @@ function exProfileForm(then, first, msg) {
       const d = await exApi({ action: "profile", name, phone, cls, gphone });
       if (!d.ok) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; return err(d.error || "সংরক্ষণ করা যায়নি।"); }
       const nz = v => v.replace(/[০-৯]/g, c => "০১২৩৪৫৬৭৮৯".indexOf(c)).replace(/\D/g, "").replace(/^88/, "");
-      au.profile = Object.assign({}, au.profile, { name, phone: nz(phone), cls, gphone: nz(gphone) });
+      const oldPf = au.profile || {}, samePhone = String(oldPf.phone || "") === nz(phone);
+      au.profile = Object.assign({}, oldPf, { name, phone: nz(phone), cls, gphone: nz(gphone) }, samePhone ? {} : { verified: !!oldPf.enrolled, vcode: "", vsent: false });
       if (pfPhoto !== undefined) {
         try { const r = pfPhoto ? await exPost({ action: "photo_set", photo: pfPhoto }) : await exPost({ action: "photo_del" }); if (r.ok) au.profile.photo = pfPhoto; } catch (x) {}   // ছবি না গেলেও তথ্য সংরক্ষিত থাকে
       }
       authBtnUpdate(); clsFromProfile();
       if (then) then(); else exMyPage();
     } catch (x) { b.disabled = false; b.textContent = "সংরক্ষণ করুন"; err(NET_MSG); }
+  });
+}
+
+/* ----- মোবাইল যাচাই (বিনামূল্যে: নিজের নম্বর থেকে কোড WhatsApp-এ পাঠান, আমরা মিলিয়ে যাচাই করি) ----- */
+function exNeedVerify(then) {
+  if (au.profile && au.profile.verified === false) { exVerify(then); return true; }
+  return false;
+}
+async function exVerify(then, msg) {
+  if (!au.user) return exAuth("in", "", () => exVerify(then));
+  exOpen(`${exTop("মোবাইল নম্বর যাচাই")}<p class="text-center text-slate-500 py-16">লোড হচ্ছে…</p>`);
+  let d = null;
+  try { d = await exApi({ action: "me" }); } catch (x) {}
+  if (!d || !d.ok) { exOpen(`${exTop("মোবাইল নম্বর যাচাই")}<p class="text-center text-slate-600 py-16">${esc((d && d.error) || NET_MSG)}</p>`); return; }
+  au.profile = d.profile; tkSet(d.tokens); authBtnUpdate();
+  const pf = d.profile;
+  if (pf.verified) { if (then) return then(); return exMyPage(d); }
+  if (!pf.phone) return exProfileForm(() => exVerify(then), false, "যাচাইয়ের আগে আপনার মোবাইল নম্বর দিন।");
+  const text = "যাচাই কোড: " + pf.vcode + "\nমোবাইল: " + pf.phone + "\nনাম: " + (pf.name || "") + "\n(সময় সোপান ওয়েবসাইট)";
+  exOpen(`${exTop("মোবাইল নম্বর যাচাই")}
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      ${msg ? `<p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">${esc(msg)}</p>` : ""}
+      <p class="text-sm text-slate-600">ভুয়া নম্বর ঠেকাতে পরীক্ষা, টোকেন ও রিসোর্সের আগে নম্বর যাচাই করতে হয়। এটি <b>বিনামূল্যে</b>।</p>
+      <p class="text-sm mt-3">আপনার নম্বর: <b>${esc(pf.phone)}</b> <button type="button" id="vChg" class="ml-1 text-xs underline text-brand-700">বদলান</button></p>
+      <div class="text-center my-4"><p class="text-xs text-slate-500">আপনার যাচাই-কোড</p><p class="text-3xl font-bold tracking-widest text-brand-800 select-all">${esc(pf.vcode)}</p></div>
+      <ol class="text-sm text-slate-700 space-y-1.5 list-decimal pl-5">
+        <li>নিচের সবুজ বোতাম চাপুন — WhatsApp-এ কোডসহ মেসেজ তৈরি থাকবে।</li>
+        <li><b>${esc(pf.phone)}</b> নম্বরের WhatsApp থেকেই মেসেজটি পাঠান (অন্য নম্বর থেকে পাঠালে যাচাই হবে না)।</li>
+        <li>পাঠানোর পর "পাঠিয়েছি" চাপুন।</li>
+        <li>আমরা মিলিয়ে যাচাই করলে সব সুবিধা চালু হবে। ${pf.vsent ? "" : "সাধারণত অল্প সময়েই হয়ে যায়।"}</li>
+      </ol>
+      <a id="vWa" target="_blank" rel="noopener" href="${esc(waUrl(text))}" class="block text-center mt-4 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold">💬 WhatsApp-এ কোড পাঠান</a>
+      ${pf.vsent ? '<p class="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-3">✅ আপনার অনুরোধ আমরা পেয়েছি। যাচাই হলেই চালু হবে।</p>' : ""}
+      <button type="button" id="vSent" class="w-full mt-3 py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white font-semibold">${pf.vsent ? "🔄 অবস্থা দেখুন" : "✔ পাঠিয়েছি"}</button>
+      <p id="vErr" class="hidden text-sm text-red-700 mt-2"></p>
+    </div>`);
+  $("#vChg").addEventListener("click", () => exProfileForm(() => exVerify(then), false));
+  $("#vSent").addEventListener("click", async () => {
+    const b = $("#vSent"); b.disabled = true;
+    try {
+      if (!pf.vsent) { const r = await exApi({ action: "verify_sent" }); if (!r.ok) { b.disabled = false; const e = $("#vErr"); e.textContent = r.error || "হয়নি।"; e.classList.remove("hidden"); return; } }
+      exVerify(then);
+    } catch (x) { b.disabled = false; const e = $("#vErr"); e.textContent = NET_MSG; e.classList.remove("hidden"); }
   });
 }
 
@@ -1496,7 +1543,7 @@ async function exMyPage(pre) {
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">${avatarHtml(pf.photo, pf.name, 56)}<div class="min-w-0"><p class="font-bold text-lg text-brand-800 truncate">${esc(pf.name || "—")}</p>
           <p class="text-sm text-slate-500 truncate">${esc(pf.email)}</p>
-          <p class="text-sm text-slate-600 mt-1">📱 ${esc(pf.phone || "—")} &nbsp;•&nbsp; 🎓 ${esc(pf.cls || "—")}</p></div></div>
+          <p class="text-sm text-slate-600 mt-1">📱 ${esc(pf.phone || "—")} ${pf.verified ? '<span class="text-emerald-700 text-xs font-semibold">✅ যাচাইকৃত</span>' : '<span class="text-amber-700 text-xs font-semibold">⚠ যাচাই হয়নি</span>'} &nbsp;•&nbsp; 🎓 ${esc(pf.cls || "—")}</p></div></div>
         <button type="button" id="myEdit" class="shrink-0 px-3 py-1.5 rounded-lg border border-slate-300 text-sm">✏ বদলান</button>
       </div>
       ${pf.enrolled ? `<p class="mt-3 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✅ আপনি সময় সোপানের ভর্তিকৃত শিক্ষার্থী — সব পেইড পরীক্ষা ও রিসোর্স আপনার জন্য ফ্রি।${pf.roll ? " <b>রোল/আইডি: " + esc(pf.roll) + "</b>" : ""}${pf.batch ? " • ব্যাচ: " + esc(pf.batch) : ""}</p>`
@@ -1510,6 +1557,7 @@ async function exMyPage(pre) {
       ${pf.enrolled ? '<p class="text-xs text-emerald-800 mt-3">ভর্তিকৃত হিসেবে আপনার পেইড পরীক্ষা ও রিসোর্স ফ্রি।</p>' : ""}
       ${(d.tkLog || []).length ? `<details class="mt-3"><summary class="text-sm text-brand-700 cursor-pointer">টোকেনের হিসাব দেখুন</summary><div class="mt-2">${d.tkLog.map(t => `<div class="flex items-start justify-between gap-3 py-2 border-t border-slate-100 text-sm"><div class="min-w-0"><p class="font-medium">${esc(t.type)}</p><p class="text-xs text-slate-500 break-words">${esc(t.desc)}${t.at ? " • " + esc(fmtDT(t.at)) : ""}</p></div><b class="shrink-0 ${t.qty < 0 ? "text-red-700" : "text-emerald-700"}">${t.qty > 0 ? "+" : ""}${bnD(t.qty)}</b></div>`).join("")}</div></details>` : ""}
     </div>
+    ${pf.verified ? "" : `<div class="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4"><p class="font-semibold text-amber-900">📱 মোবাইল নম্বর যাচাই বাকি</p><p class="text-sm text-amber-900 mt-1">যাচাই না হলে পরীক্ষা দেওয়া, টোকেন কেনা, রিসোর্স খোলা ও উপহার টোকেন পাওয়া যাবে না। নম্বর যাচাই করুন — এটি সম্পূর্ণ বিনামূল্যে।</p><button type="button" id="myVer" class="w-full mt-3 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold">📱 এখনই যাচাই করুন</button></div>`}
     <div id="myRt"></div>
     ${pf.enrolled ? '<div id="myPriv"><p class="text-center text-slate-500 text-sm py-8">আপনার ফি, উপস্থিতি ও ফল লোড হচ্ছে…</p></div>' : ""}
     <h3 class="font-semibold text-brand-800 mt-6 mb-3">📋 আমার অনলাইন পরীক্ষার ফল</h3>
@@ -1525,6 +1573,7 @@ async function exMyPage(pre) {
     <div class="h-10"></div>`);
   $("#myEdit").addEventListener("click", () => exProfileForm(null, false));
   $("#myBuy").addEventListener("click", () => exPay(null));
+  const mv = $("#myVer"); if (mv) mv.addEventListener("click", () => exVerify(null));
   $("#myOut").addEventListener("click", async () => { try { await au.fb.signOut(); } catch (x) {} exClose(true); });
   document.querySelectorAll("[data-hb]").forEach(b => b.addEventListener("click", () => { const h = d.history[+b.dataset.hb]; exBoard({ id: h.exam, title: h.title }); }));
   document.querySelectorAll("[data-hr]").forEach(b => b.addEventListener("click", () => { const h = d.history[+b.dataset.hr]; exReview({ id: h.exam, title: h.title }); }));
@@ -1690,6 +1739,7 @@ async function privLoad(pf) {
 function exPay(e, msg) {
   exRequireLogin(async () => {
     try { const m = await exApi({ action: "me" }); if (m.ok) { au.profile = m.profile; tkSet(m.tokens); } } catch (x) {}
+    if (exNeedVerify(() => exPay(e, msg))) return;
     const s = ex.settings || {}, price = s.price || 5, minBuy = s.minBuy || 10, bal = au.tokens || 0, need = e ? (e.fee || 0) : 0;
     if (e && bal >= need) return e.kind === "res" ? resUnlock(e) : exEntry(e);   // যথেষ্ট টোকেন আছে
     const lack = Math.max(minBuy, need - bal);
@@ -1787,8 +1837,8 @@ $("#resSub").addEventListener("change", e => { res.sub = e.target.value; resRend
 $("#resGrid").addEventListener("click", ev => {
   const b = ev.target.closest("button[data-ra]"); if (!b) return;
   const i = res.items.find(x => x.id === b.dataset.id); if (!i) return;
-  if (b.dataset.ra === "pay") exRequireLogin(() => exPay(Object.assign({ kind: "res" }, i)));    // যথেষ্ট টোকেন থাকলে সরাসরি আনলকের ধাপে যায়
-  else exRequireLogin(() => resOpen(i));
+  if (b.dataset.ra === "pay") exRequireLogin(() => { if (!exNeedVerify(() => exPay(Object.assign({ kind: "res" }, i)))) exPay(Object.assign({ kind: "res" }, i)); });    // যথেষ্ট টোকেন থাকলে সরাসরি আনলকের ধাপে যায়
+  else exRequireLogin(() => { if (!exNeedVerify(() => resOpen(i))) resOpen(i); });
 });
 // সার্ভার অনুমতি যাচাই করে লিংক দেয়; সরাসরি ট্যাপে খোলার জন্য লিংক বোতাম দেখানো হয় (পপআপ আটকায় না)
 // টোকেন খরচের আগে নিশ্চিতকরণ
@@ -1808,6 +1858,7 @@ async function resOpen(i, confirmSpend) {
     exOpen(`${exTop(i.title)}<div class="text-center py-14"><p class="text-slate-700">${esc(d.error || "এখন খোলা যাচ্ছে না।")}</p><div id="rsAct" class="mt-5"></div></div>`);
     const a = $("#rsAct");
     if (d.code === "locked" || d.code === "tokens") { a.innerHTML = `<button type="button" id="rsB" class="px-6 py-3 rounded-xl bg-gold-500 text-white font-semibold">🪙 ${bnD(i.fee || 0)} টোকেন দিয়ে আনলক করুন</button>`; $("#rsB").addEventListener("click", () => exPay(Object.assign({ kind: "res" }, i))); }
+    else if (d.code === "verify") { a.innerHTML = '<button type="button" id="rsB" class="px-6 py-3 rounded-xl bg-brand-700 text-white font-semibold">📱 মোবাইল যাচাই করুন</button>'; $("#rsB").addEventListener("click", () => exVerify(() => resOpen(i, confirmSpend))); }
     else if (d.code === "login" || d.code === "auth") { a.innerHTML = '<button type="button" id="rsB" class="px-6 py-3 rounded-xl bg-brand-700 text-white font-semibold">সাইন ইন করুন</button>'; $("#rsB").addEventListener("click", () => exAuth("in", "", () => resOpen(i))); }
     return;
   }
@@ -1912,6 +1963,7 @@ const LEGAL = (() => {
       ${h("সেবা পরিবর্তন")}<p>প্রয়োজনে পরীক্ষা, রিসোর্স বা এই শর্ত বদলানো হতে পারে। বিস্তারিত জানতে ${wa}-এ যোগাযোগ করুন।</p>` },
     help: { title: "কীভাবে ব্যবহার করবেন", html: `<p>প্রথম থেকে দ্বাদশ শ্রেণি ও NU ভর্তি প্রস্তুতির যে কেউ অংশ নিতে পারবে।</p>
       ${h("১. সাইন ইন / সাইন আপ")}<p>ওপরে ডানের <b>সাইন ইন</b> বোতামে চাপুন → Google দিয়ে অথবা ইমেইল-পাসওয়ার্ড দিয়ে। প্রথমবার নাম, মোবাইল, শ্রেণি (ও ইচ্ছা হলে অভিভাবকের নম্বর) দিতে হবে — একবারই।</p>
+      ${h("১ক. মোবাইল নম্বর যাচাই (বিনামূল্যে)")}<p>ভুয়া নম্বর ঠেকাতে পরীক্ষা, টোকেন ও রিসোর্সের আগে একবার নম্বর যাচাই করতে হয়। <b>আমার পাতা</b> বা পরীক্ষার "শুরু করুন" চাপলে যাচাই-কোড দেখাবে → <b>WhatsApp-এ কোড পাঠান</b> বোতাম চাপুন → আপনার নিজের নম্বরের WhatsApp থেকে মেসেজটি পাঠান → <b>পাঠিয়েছি</b> চাপুন। আমরা মিলিয়ে যাচাই করলেই সব সুবিধা চালু হবে। নম্বর বদলালে আবার যাচাই করতে হয়।</p>
       ${h("২. পরীক্ষা দেওয়া")}<p>"পরীক্ষা" অংশে নিজের শ্রেণি বেছে নিন → পরীক্ষার কার্ডে <b>শুরু করুন</b> চাপুন। আপনার নিজের টাইমার চলবে। উত্তর বেছে <b>জমা দিন</b>। একটি পরীক্ষা একবারই দেওয়া যায়।</p>
       ${h("৩. ফল ও সঠিক উত্তর")}<p>জমা দেওয়ার সঙ্গে সঙ্গে নম্বর ও অবস্থান দেখা যায়। সঠিক উত্তর ও ব্যাখ্যা পরীক্ষার সময়সীমা শেষে (সাইন ইন করা থাকলে আরও আগে) দেখা যায়।</p>
       ${h("৪. টোকেন ও পেইড পরীক্ষা/রিসোর্স")}<p>সাইন ইন করে <b>আমার পাতা</b>-য় আপনার টোকেন দেখুন। টোকেন লাগলে <b>টোকেন কিনুন</b> চাপুন → কতটি লাগবে লিখুন → দেখানো নম্বরে বিকাশ/নগদে Send Money করুন → আপনার নম্বর ও TrxID জমা দিন। আমরা মিলিয়ে দেখলেই টোকেন যোগ হবে। এরপর পেইড পরীক্ষা শুরু করলে বা রিসোর্স আনলক করলে সেই টোকেন কাটা যাবে। কোচিংয়ে ভর্তিকৃতদের জন্য সব ফ্রি।</p>
@@ -2052,13 +2104,13 @@ const R = {
   friday: () => ({ t: "🎓 সোপান ফ্রাইডে — প্রতি শুক্রবার সবার জন্য ফ্রি ক্লাস! ভর্তিকৃত হোন বা না হোন, যে কেউ অংশ নিতে পারবেন। সময় ও বিষয় নোটিশে জানানো হয়।", a: [A.go("notices", "📢 নোটিশ দেখুন"), WA("💬 ফ্রি ক্লাসের সময় জানুন", "আসসালামু আলাইকুম, সোপান ফ্রাইডের সময় জানতে চাই।")] }),
   exam: () => {
     const n = (typeof ex !== "undefined" && ex.exams) ? ex.exams.length : 0;
-    return { t: "অনলাইন পরীক্ষা প্রথম থেকে দ্বাদশ ও NU ভর্তি প্রস্তুতির জন্য" + (n ? ` (এখন ${BN(n)}টি পরীক্ষা আছে)` : "") + "।\n১) পরীক্ষা অংশে নিজের শ্রেণি বাছুন\n২) পরীক্ষা বেছে \"শুরু করুন\" চাপুন — সময়সীমার মধ্যে নিজের টাইমারে দিন\n৩) জমার পর বা সময়সীমা শেষে সঠিক উত্তর ও ব্যাখ্যা দেখুন, লিডারবোর্ডে নিজের অবস্থান জানুন\nফ্রি পরীক্ষা সবার জন্য; পেইড পরীক্ষায় সাইন ইন ও টোকেন লাগে (ভর্তিকৃতদের ফ্রি)।", a: [A.go("exams", "📝 পরীক্ষা দেখুন"), A.say("টোকেন কীভাবে কিনব?"), A.fn("signin", "🔑 সাইন ইন")] };
+    return { t: "অনলাইন পরীক্ষা প্রথম থেকে দ্বাদশ ও NU ভর্তি প্রস্তুতির জন্য" + (n ? ` (এখন ${BN(n)}টি পরীক্ষা আছে)` : "") + "।\n১) পরীক্ষা অংশে নিজের শ্রেণি বাছুন\n২) পরীক্ষা বেছে \"শুরু করুন\" চাপুন — সময়সীমার মধ্যে নিজের টাইমারে দিন\n৩) জমার পর বা সময়সীমা শেষে সঠিক উত্তর ও ব্যাখ্যা দেখুন, লিডারবোর্ডে নিজের অবস্থান জানুন\nফ্রি পরীক্ষাও সাইন ইন ও মোবাইল নম্বর যাচাই (বিনামূল্যে) করে দিতে হয়; পেইড পরীক্ষায় আরও টোকেন লাগে (ভর্তিকৃতদের ফ্রি)।", a: [A.go("exams", "📝 পরীক্ষা দেখুন"), A.say("টোকেন কীভাবে কিনব?"), A.fn("signin", "🔑 সাইন ইন")] };
   },
   honor: () => ({ t: "🏅 সোপান সম্মাননায় অনলাইন ও অফলাইন পরীক্ষার সেরা ১০ জন এবং প্রতি মাসের শ্রেণিভিত্তিক সেরাদের নাম (শুধু প্রথম নাম ও শ্রেণি) দেখানো হয়।", a: [A.go("honor", "🏅 সোপান সম্মাননা দেখুন")] }),
   game: () => ({ t: "🎮 \"খেলে শেখো\" পাতায় পাঁচটি ছোট গেম আছে: সোপান বেয়ে ওঠো, দ্রুত হিসাব, শব্দ ধাঁধা, মেমোরি কার্ড ও আজকের চ্যালেঞ্জ। সাইন ইন লাগে না, স্কোর শুধু আপনার ফোনে থাকে।", a: [A.link("🎮 গেম খেলি", "games.html")] }),
   resource: () => ({ t: "রিসোর্স অংশে প্রথম থেকে দ্বাদশ ও NU-র PDF নোট, শিট ও প্রশ্নব্যাংক আছে। শ্রেণি ও বিষয় বেছে খুঁজুন। কিছু রিসোর্স সাইন ইন করলেই পাবেন, কিছু ভর্তিকৃতদের জন্য, আর কিছুতে টোকেন লাগে।", a: [A.go("resources", "📚 রিসোর্স দেখুন"), A.fn("signin", "🔑 সাইন ইন")] }),
-  token: () => ({ t: "🪙 টোকেন দিয়ে পেইড পরীক্ষা ও রিসোর্স খোলা যায়। ১ টোকেন = ৳৫।\nকেনার নিয়ম: সাইন ইন → আমার পাতা → \"টোকেন কিনুন\" → বিকাশ/নগদে টাকা পাঠিয়ে TrxID ও নম্বর দিন → মালিক অনুমোদন দিলে টোকেন যোগ হবে।\nপেইড পরীক্ষা শুরুর সময় একবার টোকেন কাটে, পরে ফেরত হয় না। নতুন সাইন আপে কিছু উপহার টোকেন পাওয়া যায়। ভর্তিকৃতদের পেইড পরীক্ষা ও রিসোর্স ফ্রি।", a: [A.fn("mypage", "👤 আমার পাতা / টোকেন কিনুন"), A.say("কীভাবে সাইন ইন করব?")] }),
-  signin: () => ({ t: "সাইট একদম ফ্রি দেখা যায়। পেইড পরীক্ষা, টোকেন, নিজের ফল ও রুটিনের জন্য সাইন ইন লাগে: ওপরের \"সাইন ইন\" বোতাম → Google দিয়ে ঢুকুন → প্রথমবার নাম, মোবাইল ও শ্রেণি দিন (ছবি দেওয়া ঐচ্ছিক)।" + (signedIn() ? "\n\nআপনি এখন সাইন ইন করা আছেন।" : ""), a: [A.fn("signin", "🔑 এখনই সাইন ইন করুন"), A.fn("legal:help", "📘 ব্যবহারের নিয়ম")] }),
+  token: () => ({ t: "🪙 টোকেন দিয়ে পেইড পরীক্ষা ও রিসোর্স খোলা যায়। ১ টোকেন = ৳৫।\nকেনার নিয়ম: সাইন ইন → আমার পাতা → \"টোকেন কিনুন\" → বিকাশ/নগদে টাকা পাঠিয়ে TrxID ও নম্বর দিন → মালিক অনুমোদন দিলে টোকেন যোগ হবে।\nপেইড পরীক্ষা শুরুর সময় একবার টোকেন কাটে, পরে ফেরত হয় না। মোবাইল নম্বর যাচাই হলে কিছু উপহার টোকেন পাওয়া যায়। ভর্তিকৃতদের পেইড পরীক্ষা ও রিসোর্স ফ্রি।", a: [A.fn("mypage", "👤 আমার পাতা / টোকেন কিনুন"), A.say("কীভাবে সাইন ইন করব?")] }),
+  signin: () => ({ t: "সাইট একদম ফ্রি দেখা যায়। পরীক্ষা দেওয়া, টোকেন, নিজের ফল ও রুটিনের জন্য সাইন ইন লাগে (পরীক্ষা, টোকেন ও রিসোর্সের আগে একবার বিনামূল্যে মোবাইল নম্বর যাচাইও লাগে): ওপরের \"সাইন ইন\" বোতাম → Google দিয়ে ঢুকুন → প্রথমবার নাম, মোবাইল ও শ্রেণি দিন (ছবি দেওয়া ঐচ্ছিক)।" + (signedIn() ? "\n\nআপনি এখন সাইন ইন করা আছেন।" : ""), a: [A.fn("signin", "🔑 এখনই সাইন ইন করুন"), A.fn("legal:help", "📘 ব্যবহারের নিয়ম")] }),
   mypage: () => ({ t: "আপনার ফি, বকেয়া, উপস্থিতি, অফলাইন পরীক্ষার ফল ও সোপান ধাপ শুধু আপনার নিজের \"আমার পাতা\"-য় দেখা যায় (ভর্তিকৃত শিক্ষার্থীদের জন্য)। গোপনীয়তার জন্য আমি এসব তথ্য দেখতে পারি না। রোল বা তথ্য ভুল থাকলে WhatsApp-এ জানান।", a: [A.fn("mypage", "👤 আমার পাতা খুলুন"), WA("💬 তথ্য ঠিক করতে জানান", "আসসালামু আলাইকুম, আমার তথ্য নিয়ে একটি বিষয় জানতে চাই।")] }),
   step: () => ({ t: "🪜 সোপান ধাপ: নিজের শুরুর নম্বরের সঙ্গে প্রতি মাসের নম্বর মিলিয়ে ধাপ ঠিক হয় — শুরু → গতি → দৃঢ়তা → দক্ষ → শিখর। উন্নতি ১০%, ২০%, ৩০%, ৪০% হলে একেক ধাপ ওপরে ওঠা যায়, উপস্থিতি ৮০%-এর বেশি হলে বাড়তি ৫%। ভর্তিকৃতরা নিজের ধাপ \"আমার পাতা\"-য় দেখতে পান; ধাপ ওঠার জন্য ব্যাজ ও সনদ আছে।", a: [A.fn("mypage", "👤 আমার ধাপ দেখুন"), A.go("admission", "📝 ভর্তি হতে চাই")] }),
   notice: () => {
@@ -2080,7 +2132,7 @@ const RE = {
   address: () => ({ t: "106 Khan Jahan Ali Road, Khulna (opposite Sundarban College). Phone/WhatsApp: " + phone() + ".", a: [A.tel(), WA("💬 WhatsApp", "Hello.")] }),
   honor: () => ({ t: "Sopan Honour shows the top 10 of every online and offline exam and each month's best per class (first name and class only).", a: [A.go("honor", "🏅 Sopan Honour")] }),
   game: () => ({ t: "The \"Learn by Playing\" page has five short games: Climb the Steps, Quick Math, Word Puzzle, Memory Cards and the Daily Challenge. No sign-in needed; scores stay on your phone.", a: [A.link("🎮 Play", "games.html")] }),
-  exam: () => ({ t: "Pick your class in the Exams section, choose an exam and start — you get your own timer. After submitting you can see correct answers and the leaderboard. Free exams are open to all; paid exams need sign-in and tokens (1 token = ৳5; enrolled students are free).", a: [A.go("exams", "📝 Exams")] }),
+  exam: () => ({ t: "Pick your class in the Exams section, choose an exam and start — you get your own timer. After submitting you can see correct answers and the leaderboard. Every exam needs sign-in and a one-time free mobile verification; paid exams also need tokens (1 token = ৳5; enrolled students are free).", a: [A.go("exams", "📝 Exams")] }),
   token: () => ({ t: "1 token = ৳5. Sign in → My Page → Buy tokens → send money by bKash/Nagad and enter the TrxID → tokens are added once approved. A paid exam uses tokens once at the start (no refund); enrolled students are free.", a: [A.fn("mypage", "👤 My Page")] }),
   signin: () => ({ t: "Use the Sign in button at the top (Google). On first sign-in add your name, mobile and class — a photo is optional.", a: [A.fn("signin", "🔑 Sign in")] }),
   friday: () => ({ t: "Sopan Friday — a free class for everyone every Friday, enrolled or not.", a: [A.go("notices", "📢 Notices")] }),
